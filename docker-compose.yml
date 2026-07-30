@@ -1,0 +1,45 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载 chroma_db 目录，持久化向量数据
+      - ./chroma_db:/app/chroma_db
+      # 挂载 sqlite_db 目录，持久化会话数据库
+      - ./sqlite_db:/app/sqlite_db
+      # 挂载 logs 目录，持久化日志
+      - ./logs:/app/logs
+    environment:
+      # ===== LLM 配置 =====
+      # 默认模型提供商
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-aliyun}
+      
+      # 阿里云配置
+      - ALIYUN_API_KEY=${ALIYUN_API_KEY}
+      - ALIYUN_BASE_URL=${ALIYUN_BASE_URL}
+      - ALIYUN_CHAT_MODEL=${ALIYUN_CHAT_MODEL}
+      - ALIYUN_EMBEDDING_MODEL=${ALIYUN_EMBEDDING_MODEL}
+      
+      # 豆包配置（新增）
+      - DOUBAO_API_KEY=${DOUBAO_API_KEY}
+      - DOUBAO_BASE_URL=${DOUBAO_BASE_URL}
+      - DOUBAO_CHAT_MODEL=${DOUBAO_CHAT_MODEL}
+      - DOUBAO_EMBEDDING_MODEL=${DOUBAO_EMBEDDING_MODEL}
+      
+      # ===== 数据库配置 =====
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///sqlite_db/llm_app.db}
+      
+      # ===== LangSmith 配置（新增）=====
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING:-true}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT:-my-llm-app}
+      
+      # ===== 其他配置 =====
+      - RAG_ROOT_DIR=${RAG_ROOT_DIR:-/app/docs}
+      - CHROMA_STORE_DIR=${CHROMA_STORE_DIR:-/app/chroma_db}
+      
+    restart: unless-stopped  # 自动重启

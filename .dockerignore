@@ -1,0 +1,8 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+.env
+chroma_db/
+logs/
+.vscode/
