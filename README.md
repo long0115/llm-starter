@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <strong>一个基于 Python + FastAPI 的 LLM 应用开发脚手架</strong>
+  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的 LLM 应用开发脚手架</strong>
   <br/>
   集成 Chat、RAG、Agent 三大核心能力
 </p>

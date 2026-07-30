@@ -27,6 +27,7 @@ env/
 chroma_db/
 sqlite_db/
 temp_uploads/
+docs/
 
 # 日志
 logs/
