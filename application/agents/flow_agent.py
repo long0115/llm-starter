@@ -40,9 +40,8 @@ class FlowAgent:
 
         流程：
             - add_node：添加节点（Node）：每个节点是一个处理函数
-            - set_entry_point：设置入口点
-            - add_conditional_edges：添加条件边，根据函数返回值决定下一个节点
             - add_edge：添加边，指定节点之间的连接
+            - add_conditional_edges：添加条件分支边，根据函数返回值决定下一个节点
         """
 
         if self.checkpoint is None:
@@ -60,11 +59,11 @@ class FlowAgent:
             workflow.add_node("rag_handler", self._rag_handler)
             # 工具调用节点
             workflow.add_node("tool_handler", self._tool_handler)
-            # tools: 使用 ToolNode 执行工具调用（LangGraph 预构建的工具执行节点）
+            # 使用 ToolNode 执行工具调用（LangGraph 预构建的工具执行节点）
             workflow.add_node("tools", ToolNode(self.tools))
             
             # 设置入口点：从 identify_intent 开始执行
-            workflow.set_entry_point("identify_intent")
+            workflow.add_edge(START, "identify_intent")
             
             # 添加条件边：根据 _route_task 的返回值决定下一个节点
             workflow.add_conditional_edges("identify_intent", self._route_task)

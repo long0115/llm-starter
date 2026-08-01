@@ -12,7 +12,7 @@
 <p align="center">
   <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的 LLM 应用开发脚手架</strong>
   <br/>
-  集成 Chat、RAG、Agent 三大核心能力
+  集成 Chat、RAG、Agent、Skill、MCP 五大核心能力
 </p>
 
 ## 目录
@@ -35,6 +35,8 @@
 - 💬 **智能对话** - 支持同步/流式对话，多轮上下文记忆
 - 📚 **RAG 知识库** - 混合检索（向量 + BM25），重排序检索，引用来源溯源
 - 🤖 **Agent 智能体** - 基于 LangGraph 的工具调用、任务规划
+- 🧠 **Skill 技能系统** - SKILL.md 文件定义，渐进式披露，按需加载技能   
+- 🔌 **MCP 远程工具** - 通过 MCP 协议调用远程服务工具，动态扩展 Agent 能力
 - 🔌 **多模型支持** - 阿里云/豆包等主流 LLM，启动时可切换
 - 🛡️ **生产就绪** - CORS、认证、速率限制、日志、异常处理
 - 📊 **链路追踪** - 集成 LangSmith，全链路可观测
@@ -71,18 +73,24 @@
 ┌─────────────────────────────────────────────────────────┐
 │                  Service 层 (application/service/)      │
 │  ChatService  │  RAGService  │  AgentService            │
-└─────────────────────────┬───────────────────────────────┘
+─────────────────────────┬───────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│                Adapter 层 (application/adapter/)       │
-│  OpenAIAdapter  │  ChromaAdapter                        │
+│                Adapter 层 (infra/adapter/)              │
+│  OpenAIAdapter  │  ChromaAdapter  │  McpAdapter         │
 └─────────────────────────┬───────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │               Infrastructure 层 (infra/)                │
-│  文档处理  │ 检索器  │ 存储  │ Prompt  │ 工具  │ 配置    │
+│  文档处理  │ 检索器  │ 存储  │ Prompt  │ 外部服务  │ 配置 │
+─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Skill 层 (application/skills/)          │
+│  SKILL.md 定义  │  渐进式披露  │  动态加载               │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -102,23 +110,48 @@ llm-starter/
 │   │   ├── rag.py                    # RAG 接口
 │   │   ├── agent.py                  # Agent 接口
 │   │   └── session.py                # 会话接口
-│   └── schemas/                      # 请求/响应模型
+│   ── schemas/                      # 请求/响应模型
 │       ├── chat.py
 │       ├── rag.py
 │       └── agent.py
 ├── application/                      # 业务层
+│   ├── agents/                       # Agent 实现
+│   │   ├── flow_agent.py             # 带意图识别的流程 Agent
+│   │   └── simple_agent.py           # 简单工具调用 Agent
+│   ├── ports/                        # 端口（接口定义）
+│   │   ├── llm_client_port.py        # LLM 客户端端口
+│   │   ├── document_port.py          # 文档处理端口
+│   │   ├── prompt_port.py            # Prompt 端口
+│   │   ├── retriever_port.py         # 检索器端口
+│   │   └── vector_store_port.py      # 向量存储端口
+│   ├── service/                      # 服务
+│   │   ├── chat_service.py           # 对话服务
+│   │   ├── rag_service.py            # RAG 服务
+│   │   └── agent_service.py          # Agent 服务
+│   ├── skills/                       # Skill 技能系统
+│   │   ├── base_skill.py             # Skill 基类 + SkillManager
+│   │   ├── SKILL.md                  # 技能定义规范
+│   │   ├── weather/                  # 天气技能目录
+│   │   │   └── SKILL.md              # 天气技能定义
+│   │   └── weather_skill.py          # 天气技能实现
+│   ├── tools/                        # 工具实现
+│   │   ├── calculator.py             # 计算器
+│   │   ├── time_tool.py              # 时间查询
+│   │   └── weather.py                # 天气查询
+│   ├── middleware/                    # 中间件
+│   │   ├── custom_middleware.py       # 自定义中间件
+│   │   └── wrap_middleware.py         # 包装中间件
+│   └── dependency_injection.py       # 依赖注入容器
+├── infra/                            # 基础设施层
 │   ├── adapter/                      # 适配器
 │   │   ├── openai_adapter.py         # LLM 适配器
-│   │   └── chroma_adapter.py         # Chroma 适配器
-│   └── service/                      # 服务
-│       ├── chat_service.py           # 对话服务
-│       ├── rag_service.py            # RAG 服务
-│       └── agent_service.py          # Agent 服务
-├── infra/                            # 基础设施层
+│   │   ├── chroma_adapter.py         # Chroma 适配器
+│   │   └── mcp_adapter.py            # MCP 远程工具适配器
 │   ├── document/                     # 文档处理
 │   │   ├── loader.py                 # 文档加载
 │   │   ├── cleaner.py                # 文档清洗
-│   │   └── splitter.py               # 文档切分
+│   │   ├── splitter.py               # 文档切分
+│   │   └── formatter.py              # 文档格式化
 │   ├── retriever/                    # 检索器
 │   │   └── retriever.py              # 混合/重排序检索
 │   ├── storage/                      # 存储
@@ -128,14 +161,14 @@ llm-starter/
 │   ├── prompt/                       # Prompt 管理
 │   │   ├── prompt_manager.py
 │   │   └── template/                  # Prompt 模板
-│   ├── tools/                        # Agent 工具
-│   │   ├── calculator.py
-│   │   ├── time_tool.py
-│   │   └── weather.py
+│   ├── external/                     # 外部服务
+│   │   └── weather_client.py         # 天气 API 客户端
 │   ├── utils/                        # 工具类
 │   │   ├── log_util.py
-│   │   └── file_util.py
-│   └── settings.py                   # 配置管理
+│   │   ├── file_util.py
+│   │   └── str_util.py
+│   ├── settings.py                   # 配置管理
+│   └── exceptions.py                 # 自定义异常
 ├── docs/                             # 知识库文档
 ├── chroma_db/                        # 向量数据库存储
 ├── sqlite_db/                       # SQLite 数据库存储
@@ -423,6 +456,30 @@ POST /chat/base
 - **对话记忆**：基于线程的多轮对话
 - **路由决策**：根据问题选择合适的工具
 
+### 4. Skill 技能系统
+
+采用 SKILL.md 文件定义方式（知识驱动型），支持渐进式披露：
+
+- **启动时**：只加载所有 SKILL.md 的 YAML frontmatter（name + description），约几百 token
+- **匹配后**：按需加载完整 SKILL.md 内容（执行步骤、注意事项等）
+- **执行时**：调用具体 Python 实现
+
+目录结构：
+```
+skills/
+└── weather/
+    ├── SKILL.md           # 技能定义（YAML frontmatter + Markdown）
+    └── weather_skill.py   # 技能实现（继承 Skill 基类）
+```
+
+### 5. MCP 远程工具
+
+通过 MCP（Model Context Protocol）协议调用远程服务工具：
+
+- **动态扩展**：不修改代码，通过配置新增 MCP 服务即可扩展 Agent 能力
+- **异步管理**：支持异步上下文管理，正确管理连接生命周期
+- **降级处理**：MCP 服务不可用时自动降级为本地工具
+
 ---
 
 ## Docker 部署
@@ -475,6 +532,8 @@ docker-compose down
 - [x] 引用来源溯源
 - [x] Docker 部署
 - [x] LangSmith 链路追踪
+- [x] Skill 技能系统（SKILL.md 定义，渐进式披露）
+- [x] MCP 远程工具支持
 - [ ] 问题改写优化
 - [ ] 重排序检索器
 - [ ] 单元测试
