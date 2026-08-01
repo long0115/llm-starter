@@ -14,7 +14,7 @@ from infra.utils.log_util import logger
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
 @router.post("/run", response_model=AgentResponse)
-def agent_run(request: AgentRequest, agent_service: AgentService = Depends(get_agent_service)):
+async def agent_run(request: AgentRequest, agent_service: AgentService = Depends(get_agent_service)):
     """
     Agent 执行接口
     """
@@ -23,7 +23,7 @@ def agent_run(request: AgentRequest, agent_service: AgentService = Depends(get_a
         logger.info(f"收到 Agent 请求, 问题: {request.question[:50]}...")
         
         # 执行 Agent
-        result = agent_service.run_by_simple(request.question, thread_id=request.thread_id)
+        result = await agent_service.run_by_simple(request.question, thread_id=request.thread_id)
         
         # 返回响应
         return AgentResponse(content=result)

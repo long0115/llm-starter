@@ -11,6 +11,7 @@ from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
 from infra.adapter.openai_adapter import openai_adapter
 from infra.adapter.chroma_adapter import chroma_adapter
+from infra.adapter.mcp_adapter import McpAdapter
 from infra.document.loader import document_loader
 from infra.document.cleaner import document_cleaner
 from infra.document.splitter import document_splitter
@@ -66,5 +67,11 @@ def get_flow_agent() -> FlowAgent:
 def get_simple_agent() -> SimpleAgent:
     """获取 SimpleAgent 实例（依赖注入用）"""
     return SimpleAgent(
-        llm_adapter=openai_adapter
+        llm_adapter=openai_adapter,
+        mcp_adapter=None
     )
+
+
+def get_mcp_adapter() -> McpAdapter:
+    """获取 McpAdapter 实例（依赖注入用）"""
+    return McpAdapter()

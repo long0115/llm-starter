@@ -12,7 +12,7 @@ class AgentService:
         self.flow_agent = flow_agent
         self.simple_agent = simple_agent
 
-    def run_by_simple(self, question: str, thread_id: str = "default") -> str:
+    async def run_by_simple(self, question: str, thread_id: str = "default") -> str:
         """
         运行 simple_agent，处理用户问题
 
@@ -20,10 +20,10 @@ class AgentService:
             question: 用户问题
             thread_id: 会话 ID，用于区分不同会话的记忆（默认 "default"）
 
-        Returns: Agent 的最终回答   
+        Returns: Agent 的最终回答
         """
         try:
-            self.graph = self.simple_agent.build()
+            self.graph = await self.simple_agent.build()
 
             # 调用 graph，传入初始状态，thread_id 用于区分不同会话的记忆
             result = self.graph.invoke(
