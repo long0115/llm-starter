@@ -1,23 +1,21 @@
 import requests
-from langchain.tools import tool
 from infra.settings import settings
 from infra.utils.log_util import logger
 
 
-@tool
-def get_weather(city: str) -> str:
+def search_weather(city: str) -> dict:
     """
     查询指定城市的实时天气信息。当用户询问某个城市的天气、温度、是否下雨等问题时调用此工具。
     
     Args:
         city: 城市名称，如"北京"、"上海"
     Returns:
-        天气信息字符串
+        天气信息字典
     """
     
     if not settings.WEATHER_API_KEY:
         logger.error("天气API密钥未配置，请在环境变量中设置 WEATHER_API_KEY")
-        return "未查询到天气信息"
+        return None
     try:
         # 获取天气信息
         location_id = _search_location_id(city)
@@ -35,21 +33,10 @@ def get_weather(city: str) -> str:
         # 解析 JSON 响应
         data = response.json()
         logger.info(f"天气查询结果: {data}")
-        # 格式化输出
-        if data["code"] == "200":
-            now = data["now"]
-            return (
-                f"{city}当前天气：{now['text']}，"
-                f"温度{now['temp']}°C，"
-                f"体感温度{now['feelsLike']}°C，"
-                f"湿度{now['humidity']}%，"
-                f"风向{now['windDir']}"
-            )
-        else:
-            return "未查询到天气信息"
+        return data
     except Exception as e:
         logger.error(f"获取天气异常: {str(e)}")
-        return "未查询到天气信息"
+        return None
     
 
 def _search_location_id(city_name):

@@ -7,10 +7,11 @@ DocumentCleaner - 文档清洗器
 import re
 from typing import List
 from langchain_core.documents import Document
+from application.ports.document_port import DocumentCleanerPort
 from functools import lru_cache
 
 
-class DocumentCleaner:
+class DocumentCleaner(DocumentCleanerPort):
 
     def clean(self, docs: List[Document]) -> List[Document]:
         """

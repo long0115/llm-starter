@@ -8,16 +8,17 @@ RAG 路由
 
 import os
 import shutil
-from fastapi import APIRouter, HTTPException, File, UploadFile
+from fastapi import APIRouter, HTTPException, File, UploadFile, Depends
 from api.schemas.rag import RagRequest, RagResponse
-from application.service.rag_service import rag_service
+from application.service.rag_service import RAGService
+from application.dependency_injection import get_rag_service
 from infra.utils.log_util import logger
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
 
 @router.post("/query", response_model=RagResponse)
-def rag_query(request: RagRequest):
+async def rag_query(request: RagRequest, rag_service: RAGService = Depends(get_rag_service)):
     """
     RAG 查询接口
     
@@ -30,7 +31,7 @@ def rag_query(request: RagRequest):
     try:
         logger.info(f"收到 RAG 查询请求: {request.question[:50]}...")
         
-        result = rag_service.query(
+        result = await rag_service.query(
             question=request.question,
             use_rerank=False
         )
@@ -43,7 +44,7 @@ def rag_query(request: RagRequest):
 
 
 @router.post("/documents", response_model=str)
-def rag_documents(upload_file: UploadFile = File(...)):
+def rag_documents(upload_file: UploadFile = File(...), rag_service: RAGService = Depends(get_rag_service)):
     
     """
     RAG 文档接口

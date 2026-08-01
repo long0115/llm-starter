@@ -11,9 +11,10 @@ from langchain_text_splitters import (
 )
 from langchain_core.documents import Document
 from functools import lru_cache
+from application.ports.document_port import DocumentSplitterPort
 
 
-class DocumentSplitter:
+class DocumentSplitter(DocumentSplitterPort):
 
     def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
         self.chunk_size = chunk_size        # 每个 chunk 的最大字符数

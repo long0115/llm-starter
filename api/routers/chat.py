@@ -6,22 +6,24 @@
     - POST /chat/stream: 流式对话
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from api.schemas.chat import ChatRequest, ChatResponse
-from application.service.chat_service import chat_service
+from application.service.chat_service import ChatService
+from application.dependency_injection import get_chat_service
 from infra.utils.log_util import logger
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 @router.post("/base", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, chat_service: ChatService = Depends(get_chat_service)):
     """
     同步对话接口
     
     Args:
         request: ChatRequest 请求模型
+        chat_service: ChatService 实例（依赖注入）
     
     Returns:
         ChatResponse: 响应模型
@@ -43,7 +45,7 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, chat_service: ChatService = Depends(get_chat_service)):
     """
     流式对话接口（Server-Sent Events）
     

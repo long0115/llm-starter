@@ -9,7 +9,7 @@ import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from infra.storage.database import SessionLocal, init_db
+from infra.storage.database import init_db
 from infra.storage.models import Session, Message, AgentState
 from infra.utils.log_util import logger
 from functools import lru_cache
@@ -30,7 +30,7 @@ class SessionStorage:
     
     # ========== 会话操作 ==========
     
-    def create_session(self, session_type: str = "chat", title: str = "新会话") -> str:
+    def create_session(self, db: Session, session_type: str = "chat", title: str = "新会话") -> str:
         """
         创建新会话
         
@@ -42,7 +42,6 @@ class SessionStorage:
             会话ID
         """
         session_id = str(uuid.uuid4())
-        db = SessionLocal()
         try:
             session = Session(
                 session_id=session_id,
@@ -57,10 +56,8 @@ class SessionStorage:
             db.rollback()
             logger.error(f"创建会话失败: {e}")
             raise
-        finally:
-            db.close()
-    
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+
+    def get_session(self, db: Session, session_id: str) -> Optional[Dict[str, Any]]:
         """
         获取会话信息
         
@@ -70,23 +67,19 @@ class SessionStorage:
         Returns:
             会话信息字典，不存在返回None
         """
-        db = SessionLocal()
-        try:
-            session = db.query(Session).filter(Session.session_id == session_id).first()
-            if session:
-                return {
-                    "session_id": session.session_id,
-                    "title": session.title,
-                    "session_type": session.session_type,
-                    "is_active": session.is_active,
-                    "created_at": session.created_at.isoformat() if session.created_at else None,
-                    "updated_at": session.updated_at.isoformat() if session.updated_at else None
-                }
-            return None
-        finally:
-            db.close()
-    
-    def list_sessions(self, session_type: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        session = db.query(Session).filter(Session.session_id == session_id).first()
+        if session:
+            return {
+                "session_id": session.session_id,
+                "title": session.title,
+                "session_type": session.session_type,
+                "is_active": session.is_active,
+                "created_at": session.created_at.isoformat() if session.created_at else None,
+                "updated_at": session.updated_at.isoformat() if session.updated_at else None
+            }
+        return None
+
+    def list_sessions(self, db: Session, session_type: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """
         获取会话列表
         
@@ -97,22 +90,18 @@ class SessionStorage:
         Returns:
             会话列表
         """
-        db = SessionLocal()
-        try:
-            query = db.query(Session).filter(Session.is_active == True)
-            if session_type:
-                query = query.filter(Session.session_type == session_type)
-            sessions = query.order_by(Session.updated_at.desc()).limit(limit).all()
-            return [{
-                "session_id": s.session_id,
-                "title": s.title,
-                "session_type": s.session_type,
-                "updated_at": s.updated_at.isoformat() if s.updated_at else None
-            } for s in sessions]
-        finally:
-            db.close()
-    
-    def update_session_title(self, session_id: str, title: str):
+        query = db.query(Session).filter(Session.is_active == True)
+        if session_type:
+            query = query.filter(Session.session_type == session_type)
+        sessions = query.order_by(Session.updated_at.desc()).limit(limit).all()
+        return [{
+            "session_id": s.session_id,
+            "title": s.title,
+            "session_type": s.session_type,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None
+        } for s in sessions]
+
+    def update_session_title(self, db: Session, session_id: str, title: str):
         """
         更新会话标题
         
@@ -120,35 +109,27 @@ class SessionStorage:
             session_id: 会话ID
             title: 新标题
         """
-        db = SessionLocal()
-        try:
-            session = db.query(Session).filter(Session.session_id == session_id).first()
-            if session:
-                session.title = title
-                db.commit()
-        finally:
-            db.close()
-    
-    def delete_session(self, session_id: str):
+        session = db.query(Session).filter(Session.session_id == session_id).first()
+        if session:
+            session.title = title
+            db.commit()
+
+    def delete_session(self, db: Session, session_id: str):
         """
         删除会话（软删除）
         
         Args:
             session_id: 会话ID
         """
-        db = SessionLocal()
-        try:
-            session = db.query(Session).filter(Session.session_id == session_id).first()
-            if session:
-                session.is_active = False
-                db.commit()
-                logger.info(f"删除会话: {session_id}")
-        finally:
-            db.close()
-    
+        session = db.query(Session).filter(Session.session_id == session_id).first()
+        if session:
+            session.is_active = False
+            db.commit()
+            logger.info(f"删除会话: {session_id}")
+
     # ========== 消息操作 ==========
     
-    def save_message(self, session_id: str, role: str, content: str, 
+    def save_message(self, db: Session, session_id: str, role: str, content: str, 
                      token_count: int = 0, meta_data: Optional[Dict] = None) -> int:
         """
         保存消息到会话
@@ -163,7 +144,6 @@ class SessionStorage:
         Returns:
             消息ID
         """
-        db = SessionLocal()
         try:
             message = Message(
                 session_id=session_id,
@@ -193,10 +173,8 @@ class SessionStorage:
             db.rollback()
             logger.error(f"保存消息失败: {e}")
             raise
-        finally:
-            db.close()
-    
-    def get_messages(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+
+    def get_messages(self, db: Session, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         """
         获取会话的消息历史
         
@@ -207,24 +185,20 @@ class SessionStorage:
         Returns:
             消息列表（按时间正序）
         """
-        db = SessionLocal()
-        try:
-            messages = db.query(Message).filter(
-                Message.session_id == session_id
-            ).order_by(Message.created_at.asc()).limit(limit).all()
-            
-            return [{
-                "id": m.id,
-                "role": m.role,
-                "content": m.content,
-                "token_count": m.token_count,
-                "meta_data": json.loads(m.meta_data) if m.meta_data else {},
-                "created_at": m.created_at.isoformat() if m.created_at else None
-            } for m in messages]
-        finally:
-            db.close()
-    
-    def get_messages_as_langchain(self, session_id: str, limit: int = 20) -> List[BaseMessage]:
+        messages = db.query(Message).filter(
+            Message.session_id == session_id
+        ).order_by(Message.created_at.asc()).limit(limit).all()
+        
+        return [{
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "token_count": m.token_count,
+            "meta_data": json.loads(m.meta_data) if m.meta_data else {},
+            "created_at": m.created_at.isoformat() if m.created_at else None
+        } for m in messages]
+
+    def get_messages_as_langchain(self, db: Session, session_id: str, limit: int = 20) -> List[BaseMessage]:
         """
         获取会话消息历史（转换为LangChain格式）
         
@@ -238,7 +212,7 @@ class SessionStorage:
             LangChain BaseMessage 列表
         """
         
-        messages_data = self.get_messages(session_id, limit=limit)
+        messages_data = self.get_messages(db, session_id, limit=limit)
         lc_messages = []
         
         for msg in messages_data:
@@ -253,7 +227,7 @@ class SessionStorage:
     
     # ========== Agent状态操作 ==========
     
-    def save_agent_state(self, session_id: str, state_data: Dict[str, Any]):
+    def save_agent_state(self, db: Session, session_id: str, state_data: Dict[str, Any]):
         """
         保存Agent状态
         
@@ -261,7 +235,6 @@ class SessionStorage:
             session_id: 会话ID
             state_data: 状态数据
         """
-        db = SessionLocal()
         try:
             state = db.query(AgentState).filter(AgentState.session_id == session_id).first()
             if state:
@@ -277,10 +250,8 @@ class SessionStorage:
             db.rollback()
             logger.error(f"保存Agent状态失败: {e}")
             raise
-        finally:
-            db.close()
-    
-    def get_agent_state(self, session_id: str) -> Optional[Dict[str, Any]]:
+
+    def get_agent_state(self, db: Session, session_id: str) -> Optional[Dict[str, Any]]:
         """
         获取Agent状态
         
@@ -290,30 +261,22 @@ class SessionStorage:
         Returns:
             状态数据，不存在返回None
         """
-        db = SessionLocal()
-        try:
-            state = db.query(AgentState).filter(AgentState.session_id == session_id).first()
-            if state:
-                return json.loads(state.state_data)
-            return None
-        finally:
-            db.close()
-    
-    def delete_agent_state(self, session_id: str):
+        state = db.query(AgentState).filter(AgentState.session_id == session_id).first()
+        if state:
+            return json.loads(state.state_data)
+        return None
+
+    def delete_agent_state(self, db: Session, session_id: str):
         """
         删除Agent状态
         
         Args:
             session_id: 会话ID
         """
-        db = SessionLocal()
-        try:
-            state = db.query(AgentState).filter(AgentState.session_id == session_id).first()
-            if state:
-                db.delete(state)
-                db.commit()
-        finally:
-            db.close()
+        state = db.query(AgentState).filter(AgentState.session_id == session_id).first()
+        if state:
+            db.delete(state)
+            db.commit()
 
 
 @lru_cache()

@@ -9,7 +9,7 @@ from langchain.tools import tool
 from infra.utils.log_util import logger
 
 
-@tool
+@tool(return_direct=True)
 def get_current_time() -> str:
     """
     获取当前时间
@@ -20,5 +20,4 @@ def get_current_time() -> str:
     
     now = datetime.now()
     time_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(f"获取当前时间: {time_str}")
     return f"当前时间: {time_str}"

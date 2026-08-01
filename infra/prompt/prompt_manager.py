@@ -9,10 +9,11 @@ import yaml
 from typing import Dict
 from langchain_core.prompts import ChatPromptTemplate
 from functools import lru_cache
+from application.ports.prompt_port import PromptPort
 
 
 # Prompt 管理器
-class PromptManager:
+class PromptManager(PromptPort):
     
     def __init__(self, prompts_dir: str = None):
         self.prompts: Dict[str, ChatPromptTemplate] = {}

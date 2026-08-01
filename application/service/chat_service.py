@@ -6,16 +6,17 @@
 """
 
 from api.schemas.chat import ChatResponse
-from application.adapter.openai_adapter import openai_adapter
-from infra.storage.session_storage import session_storage
-from infra.utils.log_util import logger
-from functools import lru_cache
+from application.ports.llm_client_port import LlmClientPort
+from infra.storage.session_storage import SessionStorage
+from sqlalchemy.orm import Session
 
 
 class ChatService:
 
-    def __init__(self):
-        pass
+    def __init__(self, llm_adapter: LlmClientPort, session_storage: SessionStorage, database: Session):
+        self.llm_adapter = llm_adapter
+        self.session_storage = session_storage
+        self.database = database
 
     async def chat(self, message: str, system_content: str = None, session_id: str = None) -> ChatResponse:
         """
@@ -32,22 +33,23 @@ class ChatService:
 
         # 如果没有会话ID，创建新会话
         if not session_id:
-            session_id = session_storage.create_session(session_type="chat")
+            session_id = self.session_storage.create_session(self.database, session_type="chat")
 
         # 保存用户消息
-        session_storage.save_message(session_id, "user", message)
+        self.session_storage.save_message(self.database, session_id, "user", message)
 
         # 获取历史消息（用于多轮对话）
-        history_messages = session_storage.get_messages_as_langchain(session_id)
+        history_messages = self.session_storage.get_messages_as_langchain(self.database, session_id)
         
-        response = await openai_adapter.ainvoke(
+        response = await self.llm_adapter.ainvoke(
             question=message,
             system_content=system_content,
             messages=history_messages
         )
 
         # 保存AI回复
-        session_storage.save_message(
+        self.session_storage.save_message(
+            self.database,
             session_id, "assistant", response.content,
             token_count=response.response_metadata.get("token_usage", {}).get("total_tokens", 0)
         )
@@ -70,15 +72,8 @@ class ChatService:
             ChatResponse: 包含回复内容、完成原因和 token 使用信息的响应
         """
         
-        async for chunk in openai_adapter.astream(
+        async for chunk in self.llm_adapter.astream(
             question=message,
             system_content=system_content
         ):
             yield chunk
-    
-
-@lru_cache()
-def get_chat_service() -> ChatService:
-    return ChatService()
-
-chat_service = get_chat_service()

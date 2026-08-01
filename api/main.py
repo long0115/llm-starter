@@ -27,6 +27,7 @@ from api.routers import chat, rag, agent, session
 from infra.settings import settings
 # 导入日志工具
 from infra.utils.log_util import logger
+from infra.exceptions import BusinessException
 
 # 加载 .env 文件到环境变量
 load_dotenv()
@@ -70,69 +71,51 @@ def health_check():
     }
 
 
-# 参数校验异常处理
+# 业务异常处理（根据异常类型返回对应状态码）
+@app.exception_handler(BusinessException)
+async def business_exception_handler(request: Request, exc: BusinessException):
+    logger.warning(f"业务异常 [{exc.error_code}]: {exc.message}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.error_code,
+            "message": exc.message
+        }
+    )
+
+# 参数校验异常处理（保留原有的）
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """
-    处理参数校验失败的异常
-    
-    Args:
-        request: 请求对象
-        exc: 参数校验异常
-    
-    Returns:
-        400 状态码 + 错误详情
-    """
     logger.error(f"参数校验失败: {exc.errors()}")
     return JSONResponse(
         status_code=400,
         content={
-            "error": "参数校验失败",
+            "error": "VALIDATION_ERROR",
             "message": "请检查请求参数",
             "details": exc.errors()
         }
     )
 
-# HTTP 异常处理
+# HTTP 异常处理（保留原有的）
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """
-    处理 HTTP 异常
-    
-    Args:
-        request: 请求对象
-        exc: HTTP 异常
-    
-    Returns:
-        对应的状态码 + 错误信息
-    """
     logger.error(f"HTTP 异常: {exc.status_code} - {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "error": exc.detail,
+            "error": f"HTTP_{exc.status_code}",
             "message": str(exc.detail)
         }
     )
 
-# 全局异常处理（兜底）
+# 全局异常处理（兜底，只处理未预期的异常）
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """
-    处理所有未捕获的异常（兜底）
-    
-    Args:
-        request: 请求对象
-        exc: 异常
-    
-    Returns:
-        500 状态码 + 通用错误信息
-    """
     logger.error(f"服务器内部错误: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
-            "error": "服务器内部错误",
+            "error": "INTERNAL_ERROR",
             "message": "服务暂时不可用，请稍后重试"
         }
     )

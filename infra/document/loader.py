@@ -7,18 +7,14 @@ DocumentLoader - 文档加载器
 import os
 from typing import List
 from datetime import datetime
-from langchain_community.document_loaders import (
-    TextLoader,
-    PyPDFLoader,
-    Docx2txtLoader,
-    UnstructuredFileLoader
-)
+from langchain_community.document_loaders import TextLoader, UnstructuredFileLoader
 from langchain_core.documents import Document
 from infra.utils.log_util import logger
+from application.ports.document_port import DocumentLoaderPort
 from functools import lru_cache
 
 
-class DocumentLoader:
+class DocumentLoader(DocumentLoaderPort):
 
     def load(self, file_path: str) -> List[Document]:
         """
@@ -37,30 +33,30 @@ class DocumentLoader:
         file_name = os.path.basename(file_path)
         file_ext = os.path.splitext(file_path)[1].lower()
         
+        docs = []
         try:
             if file_ext == ".txt" or file_ext == ".md":
                 loader = TextLoader(file_path, encoding="utf-8")
-            elif file_ext == ".pdf":
-                loader = PyPDFLoader(file_path)
-            elif file_ext == ".docx" or file_ext == ".doc":
-                loader = Docx2txtLoader(file_path)
             else:
                 loader = UnstructuredFileLoader(file_path)
             
             docs = loader.load()
-
-            # 为每个文档添加元数据
-            for i, doc in enumerate(docs):
-                doc.metadata["file_path"] = os.path.abspath(file_path)
-                doc.metadata["file_name"] = file_name
-                doc.metadata["file_type"] = file_ext
-                doc.metadata["page"] = i + 1
-                doc.metadata["created_at"] = datetime.now().isoformat()
-                
-            return docs
+        
         except Exception as e:
-            logger.error(f"加载文档失败: {file_path}, 错误: {str(e)}")
-            return []
+            logger.error(f"文档解析失败: {file_path}, 降级为普通文本加载: {str(e)}")
+            loader = TextLoader(file_path, encoding="utf-8")
+            docs = loader.load()
+
+        # 为每个文档添加元数据
+        for i, doc in enumerate(docs):
+            doc.metadata["file_path"] = os.path.abspath(file_path)
+            doc.metadata["file_name"] = file_name
+            doc.metadata["file_type"] = file_ext
+            doc.metadata["page"] = i + 1
+            doc.metadata["created_at"] = datetime.now().isoformat()
+            
+        return docs
+        
 
     def load_directory(self, directory: str, extensions: List[str] = None) -> List[Document]:
         """

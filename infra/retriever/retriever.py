@@ -12,13 +12,14 @@ from langchain_classic.retrievers.contextual_compression import ContextualCompre
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_core.documents import Document
-from application.adapter.chroma_adapter import chroma_adapter
+from infra.adapter.chroma_adapter import chroma_adapter
 from infra.utils.log_util import logger
 from infra.settings import settings
 from functools import lru_cache
+from application.ports.retriever_port import RetrieverPort
 
 
-class RetrieverManager:
+class RetrieverManager(RetrieverPort):
     
     def __init__(self):
         self.vector_retriever = None

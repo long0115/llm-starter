@@ -9,17 +9,19 @@ ChatOpenAI 适配器
     - with_structured_output 方法：结构化输出
 """
 
-from typing import List, Dict, AsyncIterator
+from typing import List, AsyncIterator
 from langchain_core.tools import BaseTool
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from application.ports.llm_client_port import LlmClientPort
 from infra.utils.log_util import logger
 from infra.settings import settings
-from functools import lru_cache
 from pydantic import BaseModel
+from functools import lru_cache
 
 
-class OpenAIAdapter:
+class OpenAIAdapter(LlmClientPort):
+    
     def __init__(self):
         self._client = None
         self._embedding = None
@@ -34,7 +36,7 @@ class OpenAIAdapter:
     @property
     def client(self):
         """
-        初始化 Chat 客户端实例
+        获取 ChatOpenAI 客户端实例（懒加载）
         """
         if self._client is None:
             config = settings.llm_config

@@ -11,14 +11,15 @@ ChromaDB 适配器
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from functools import lru_cache
-from application.adapter.openai_adapter import openai_adapter
+from application.ports.vector_store_port import VectorStorePort
+from infra.adapter.openai_adapter import openai_adapter
 from infra.utils.log_util import logger
 from infra.settings import settings
 
 
-class ChromaAdapter:
+class ChromaAdapter(VectorStorePort):
 
-    def __init__(self, collection_name: str):
+    def __init__(self):
         self._chroma = None
         self._embedding = None
         self.collection_name = settings.CHROMA_STORE_COLLECTION
@@ -88,6 +89,6 @@ class ChromaAdapter:
 
 @lru_cache()
 def get_chroma_adapter() -> ChromaAdapter:
-    return ChromaAdapter(settings.CHROMA_STORE_COLLECTION)
+    return ChromaAdapter()
 
 chroma_adapter = get_chroma_adapter()
