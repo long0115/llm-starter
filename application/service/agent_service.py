@@ -1,5 +1,6 @@
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
+from pydantic import config
 from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
 from infra.utils.log_util import logger
@@ -38,15 +39,15 @@ class AgentService:
                 interrupt_info = result.interrupts[0]
                 logger.info(f"触发中断: {interrupt_info}")
 
-                # 人工干预结果
-                command = Command(goto="tools", update={"approved": True})
+                # 人工干预结果，当前默认同意，后续可以根据业务返回结果动态调整
+                approved = "approve"
                 logger.info(f"人工干预结果: 同意")
 
                 # 继续执行
                 result = self.graph.invoke(
-                    command,
+                    Command(resume={"decisions": [{"type": approved}]}),
                     config={"configurable": {"thread_id": thread_id}},
-                    version="v2",
+                    version="v2"
                 )
             
             # 返回最后一条消息的内容（即 Agent 的最终回答）
@@ -73,8 +74,26 @@ class AgentService:
             # 调用 graph，传入初始状态，thread_id 用于区分不同会话的记忆
             result = self.graph.invoke(
                 input={"messages": [HumanMessage(content=question)]},
-                config={"configurable": {"thread_id": thread_id}}
+                config={"configurable": {"thread_id": thread_id}},
+                version="v2"
             )
+
+            # 检查是否有中断
+            if hasattr(result, 'interrupts') and result.interrupts:
+                # 有中断，需要人工干预
+                interrupt_info = result.interrupts[0]
+                logger.info(f"触发中断: {interrupt_info}")
+
+                # 人工干预结果，当前默认同意，后续可以根据业务返回结果动态调整
+                approved = True
+                logger.info(f"人工干预结果: 同意")
+
+                # 继续执行
+                result = self.graph.invoke(
+                    Command(resume=approved),
+                    config={"configurable": {"thread_id": thread_id}},
+                    version="v2"
+                )
             
             # 返回最后一条消息的内容（即 Agent 的最终回答）
             return result["messages"][-1].content

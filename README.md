@@ -1,4 +1,4 @@
-# LLM Starter
+# MultiAgentFlow
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python" />
@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的 LLM 应用开发脚手架</strong>
+  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的多 Agent 协作工作流框架</strong>
   <br/>
-  集成 Chat、RAG、Agent、Skill、MCP 五大核心能力
+  集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力
 </p>
 
 ## 目录
@@ -34,12 +34,12 @@
 
 - 💬 **智能对话** - 支持同步/流式对话，多轮上下文记忆
 - 📚 **RAG 知识库** - 混合检索（向量 + BM25），重排序检索，引用来源溯源
-- 🤖 **Agent 智能体** - 基于 LangGraph 的工具调用、任务规划
+- 🤖 **Agent 智能体** - 基于 LangGraph 的意图识别、任务规划、技能调用、工具调用、上下文摘要、人工干预确认等
 - 🧠 **Skill 技能系统** - SKILL.md 文件定义，渐进式披露，按需加载技能   
 - 🔌 **MCP 远程工具** - 通过 MCP 协议调用远程服务工具，动态扩展 Agent 能力
 - 🔌 **多模型支持** - 阿里云/豆包等主流 LLM，启动时可切换
 - 🛡️ **生产就绪** - CORS、认证、速率限制、日志、异常处理
-- 📊 **链路追踪** - 集成 LangSmith，全链路可观测
+- 📊 **链路追踪** - 集成 LangSmith，可进行链路追踪并观测
 - 🐳 **容器化** - Docker + docker-compose 一键部署
 
 ---
@@ -63,36 +63,37 @@
 
 ## 架构设计
 
+项目采用三层架构，职责清晰，易于扩展：
+
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                      API 层 (api/)                      │
+│                    API 层 (api/)                        │
+│  负责对外暴露 HTTP 接口，处理请求参数校验、路由分发       │
 │  /chat  /rag  /agent  /session  /health                │
 └─────────────────────────┬───────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Service 层 (application/service/)      │
-│  ChatService  │  RAGService  │  AgentService            │
-─────────────────────────┬───────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                Adapter 层 (infra/adapter/)              │
-│  OpenAIAdapter  │  ChromaAdapter  │  McpAdapter         │
+│              Application 层 (application/)              │
+│  核心业务逻辑层，包含 Service、Agent、Skill、端口定义    │
+│  Service  │  Agent  │  Skill  │  Port  │  DI 容器       │
 └─────────────────────────┬───────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────┐
-│               Infrastructure 层 (infra/)                │
-│  文档处理  │ 检索器  │ 存储  │ Prompt  │ 外部服务  │ 配置 │
-─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                 Skill 层 (application/skills/)          │
-│  SKILL.md 定义  │  渐进式披露  │  动态加载               │
-└─────────────────────────────────────────────────────────┘
+│             Infrastructure 层 (infra/)                  │
+│  基础设施层，封装所有外部依赖和底层能力                  │
+│  Adapter  │  Document  │  Retriever  │  Storage  │ ...  │
+└─────────────────────────────────────────────────────────
 ```
+
+### 各层职责
+
+| 层级 | 职责 | 核心组件 |
+|------|------|---------|
+| **API 层** | 对外暴露 RESTful 接口，处理请求/响应、参数校验、中间件 | routers、schemas、middleware |
+| **Application 层** | 核心业务逻辑，编排 Service、Agent、Skill，定义端口接口 | service、agents、skills、ports、dependency_injection |
+| **Infrastructure 层** | 封装外部依赖（LLM、向量库、MCP、文档处理、存储等） | adapter、document、retriever、storage、prompt、external |
 
 ---
 
@@ -104,16 +105,16 @@ llm-starter/
 │   ├── main.py                       # FastAPI 入口
 │   ├── middleware/                   # 中间件
 │   │   ├── auth.py                   # 认证中间件
-│   │   └── rate_limit.py            # 速率限制中间件
+│   │   └── rate_limit.py             # 速率限制中间件
 │   ├── routers/                      # 路由
 │   │   ├── chat.py                   # 对话接口
 │   │   ├── rag.py                    # RAG 接口
 │   │   ├── agent.py                  # Agent 接口
 │   │   └── session.py                # 会话接口
-│   ── schemas/                      # 请求/响应模型
-│       ├── chat.py
-│       ├── rag.py
-│       └── agent.py
+│   ├── schemas/                      # 请求/响应模型
+│       ├── chat.py                   # Chat 模型
+│       ├── rag.py                    # RAG 模型
+│       └── agent.py                  # Agent 模型
 ├── application/                      # 业务层
 │   ├── agents/                       # Agent 实现
 │   │   ├── flow_agent.py             # 带意图识别的流程 Agent
@@ -138,9 +139,9 @@ llm-starter/
 │   │   ├── calculator.py             # 计算器
 │   │   ├── time_tool.py              # 时间查询
 │   │   └── weather.py                # 天气查询
-│   ├── middleware/                    # 中间件
-│   │   ├── custom_middleware.py       # 自定义中间件
-│   │   └── wrap_middleware.py         # 包装中间件
+│   ├── middleware/                   # 中间件
+│   │   ├── custom_middleware.py      # 自定义中间件
+│   │   └── wrap_middleware.py        # 包装中间件
 │   └── dependency_injection.py       # 依赖注入容器
 ├── infra/                            # 基础设施层
 │   ├── adapter/                      # 适配器
@@ -159,25 +160,25 @@ llm-starter/
 │   │   ├── models.py                 # 数据模型
 │   │   └── session_storage.py        # 会话存储
 │   ├── prompt/                       # Prompt 管理
-│   │   ├── prompt_manager.py
-│   │   └── template/                  # Prompt 模板
+│   │   ├── prompt_manager.py         # Prompt 管理器
+│   │   └── template/                 # Prompt 模板
 │   ├── external/                     # 外部服务
 │   │   └── weather_client.py         # 天气 API 客户端
 │   ├── utils/                        # 工具类
-│   │   ├── log_util.py
-│   │   ├── file_util.py
-│   │   └── str_util.py
+│   │   ├── log_util.py               # 日志工具
+│   │   ├── file_util.py              # 文件工具类
+│   │   └── str_util.py               # 字符串工具类
 │   ├── settings.py                   # 配置管理
 │   └── exceptions.py                 # 自定义异常
 ├── docs/                             # 知识库文档
 ├── chroma_db/                        # 向量数据库存储
-├── sqlite_db/                       # SQLite 数据库存储
+├── sqlite_db/                        # SQLite 数据库存储
 ├── logs/                             # 日志目录
 ├── .env                              # 环境变量
 ├── requirements.txt                  # 依赖
 ├── Dockerfile                        # Docker 配置
 ├── docker-compose.yml                # Docker Compose 配置
-└── README.md
+└── README.md                         # 项目说明
 ```
 
 ---
@@ -284,7 +285,7 @@ DEFAULT_LLM_PROVIDER=doubao
 
 ```python
 # 检索参数
-RAG_VECTOR_TOP_K: int = 10           # 向量检索返回数量
+RAG_VECTOR_TOP_K: int = 10            # 向量检索返回数量
 RAG_BM25_TOP_K: int = 10              # BM25 检索返回数量
 RAG_RERANK_TOP_K: int = 3             # 重排序返回数量
 RAG_HYBRID_WEIGHTS: List[float] = [0.6, 0.4]  # 混合权重
@@ -311,21 +312,7 @@ Content-Type: application/json
 
 {
     "message": "你好，请介绍一下自己",
-    "system_content": "你是一个专业的AI助手",
     "session_id": "optional-session-id"
-}
-```
-
-**响应**：
-```json
-{
-    "content": "你好！我是一个AI助手...",
-    "finish_reason": "stop",
-    "token_usage": {
-        "prompt_tokens": 20,
-        "completion_tokens": 50,
-        "total_tokens": 70
-    }
 }
 ```
 
@@ -336,7 +323,8 @@ POST /chat/stream
 Content-Type: application/json
 
 {
-    "message": "写一首关于春天的诗"
+    "message": "写一首关于春天的诗",
+    "session_id": "optional-session-id"
 }
 ```
 
@@ -362,20 +350,6 @@ Content-Type: application/json
 }
 ```
 
-**响应**：
-```json
-{
-    "content": "根据文档内容，核心功能包括...",
-    "sources": [
-        {
-            "source": "docs.md",
-            "file_path": "/path/to/docs.md",
-            "page": 1
-        }
-    ]
-}
-```
-
 ### Agent 接口
 
 ```http
@@ -393,7 +367,7 @@ Content-Type: application/json
 #### 创建会话
 
 ```http
-POST /sessions
+POST /session/create
 Content-Type: application/json
 
 {
@@ -405,13 +379,13 @@ Content-Type: application/json
 #### 获取会话列表
 
 ```http
-GET /sessions?session_type=chat&limit=50
+GET /session/list?session_type=chat&limit=50
 ```
 
 #### 获取会话消息历史
 
 ```http
-GET /sessions/{session_id}/messages
+GET /session/{session_id}/messages?session_id=xxx&limit=100
 ```
 
 ---
@@ -444,17 +418,18 @@ POST /chat/base
 查询流程：
 
 ```
-用户问题 → 向量检索 + BM25 检索 → 混合排序 → 重排序（可选）→ LLM 生成 → 返回引用来源
+用户问题 → 问题改写 → 混合检索（向量 + BM25） → 重排序（可选）→ LLM 生成 → 返回引用来源
 ```
 
 ### 3. Agent 智能体
 
 基于 LangGraph 构建的 Agent，支持：
 
-- **工具调用**：计算器、天气查询、时间查询
-- **任务规划**：自动拆解复杂任务
+- **意图识别**：根据用户问题判断其意图，然后决定是否调用技能、工具或路由到其他智能体
+- **任务规划**：自动拆解复杂任务，根据意图选择合适的技能或工具
+- **人工干预**：执行高危任务时，需要人工确认或干预
+- **工具调用**：计算器、时间查询、天气查询
 - **对话记忆**：基于线程的多轮对话
-- **路由决策**：根据问题选择合适的工具
 
 ### 4. Skill 技能系统
 
@@ -521,26 +496,6 @@ docker-compose down
 
 ---
 
-## 开发计划
-
-- [x] 基础架构搭建
-- [x] 对话服务（同步/流式）
-- [x] RAG 知识库（混合检索）
-- [x] Agent 智能体（LangGraph）
-- [x] 多模型支持（阿里云/豆包）
-- [x] 会话持久化（SQLite）
-- [x] 引用来源溯源
-- [x] Docker 部署
-- [x] LangSmith 链路追踪
-- [x] Skill 技能系统（SKILL.md 定义，渐进式披露）
-- [x] MCP 远程工具支持
-- [ ] 问题改写优化
-- [ ] 重排序检索器
-- [ ] 单元测试
-- [ ] 前端界面
-
----
-
 ## 常见问题
 
 ### Q: 如何切换 LLM 模型？
@@ -560,15 +515,3 @@ docker-compose down
 - 向量数据库：`./chroma_db/`
 - 会话数据库：`./sqlite_db/llm_app.db`
 - 日志：`./logs/`
-
----
-
-## License
-
-MIT License
-
----
-
-## 联系方式
-
-如有问题或建议，请提交 Issue。

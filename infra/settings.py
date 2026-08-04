@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "dev"
 
     # 项目配置
-    PROJECT_NAME: str = "LLM Starter"
-    PROJECT_DESC: str = "AI 大模型应用开发 Starter 项目"
+    PROJECT_NAME: str = "MultiAgentFlow"
+    PROJECT_DESC: str = "AI大模型 - 多 Agent 协作工作流框架"
     PROJECT_VERSION: str = "1.0.0"
 
     # 服务器配置
@@ -43,11 +43,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-for-jwt"     # JWT 密钥
     ALGORITHM: str = "HS256"                        # JWT 算法
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30           # 访问令牌过期时间，单位分钟
-
-    # LangSmith 配置
-    LANGCHAIN_TRACING_V2: bool = False       # 是否启用 LangSmith 跟踪 V2
-    LANGCHAIN_API_KEY: Optional[str] = None  # LangSmith API 密钥
-    LANGCHAIN_PROJECT: str = "llm-starter"   # LangSmith 项目名称
 
     # 日志配置
     LOG_NAME: str = "app"                   # 日志名称，默认 app

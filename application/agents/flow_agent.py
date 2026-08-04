@@ -5,6 +5,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
+from langgraph.types import Command, Interrupt
 from application.ports.llm_client_port import LlmClientPort
 from application.service.rag_service import RAGService
 from application.tools.calculator import calculate
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     task_type: Annotated[str, "任务类型：chat | rag | tool"]
+    approved: Annotated[bool, "人工干预结果：是否同意本次操作"] = False
 
 
 class FlowAgent:
@@ -59,20 +61,28 @@ class FlowAgent:
             workflow.add_node("rag_handler", self._rag_handler)
             # 工具调用节点
             workflow.add_node("tool_handler", self._tool_handler)
+            # 人工干预节点
+            workflow.add_node("human_handler", self._human_handler)
             # 使用 ToolNode 执行工具调用（LangGraph 预构建的工具执行节点）
             workflow.add_node("tools", ToolNode(self.tools))
             
             # 设置入口点：从 identify_intent 开始执行
             workflow.add_edge(START, "identify_intent")
             
-            # 添加条件边：根据 _route_task 的返回值决定下一个节点
+            # 意图识别节点：根据 _route_task 的返回值决定下一个节点
             workflow.add_conditional_edges("identify_intent", self._route_task)
             
-            # 添加终止边：普通对话和 RAG 知识库问答完成后指向 END
+            # 终止节点：普通对话和 RAG 知识库问答完成后指向 END
             workflow.add_edge("chat_handler", END)
             workflow.add_edge("rag_handler", END)
+
+            # 人工干预节点：批准则执行，否则结束流程
+            workflow.add_conditional_edges(
+                "human_handler",
+                lambda state: "tool_handler" if state.get("approved") else END
+            )
             
-            # 添加条件边：工具调用完成后根据结果判断是否继续调用工具
+            # 工具调用节点：工具调用完成后根据结果判断是否继续调用工具
             workflow.add_conditional_edges(
                 "tool_handler",
                 self._should_continue,
@@ -187,6 +197,21 @@ class FlowAgent:
         
         return {"messages": [response]}
 
+    def _human_handler(self, state: AgentState) -> AgentState:
+        """
+        人工干预节点，根据人工干预结果继续流程。
+        """
+
+        approved = interrupt({
+            "question": "是否同意本次操作？"
+        })
+
+        # 处理人工干预结果
+        if approved == True:
+            return {"approved": True}
+        else:
+            return {"approved": False}
+
     def _route_task(self, state: AgentState) -> str:
         """
         路由节点，根据任务类型选择合适的处理节点。
@@ -197,7 +222,7 @@ class FlowAgent:
         elif task_type == "rag":
             return "rag_handler"
         elif task_type == "tool":
-            return "tool_handler"
+            return "human_handler"
         else:
             return "chat_handler"
 

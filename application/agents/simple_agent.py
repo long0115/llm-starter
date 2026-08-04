@@ -63,9 +63,9 @@ class SimpleAgent:
                     HumanInTheLoopMiddleware(
                         # approve: 批准，reject: 拒绝，edit: 修改参数，respond: 直接回复
                         interrupt_on={
-                            "calculator": True,
-                            "get_current_time": True,
-                            "get_weather": {
+                            "calculator": True,    # 中断工具，并允许所有决策
+                            "get_current_time": False,    # 不中断工具
+                            "get_weather": {        # 中断工具，但允许审批和拒绝
                                 "allowed_decisions": ["approve", "reject"]
                             }
                         }
