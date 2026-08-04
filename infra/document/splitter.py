@@ -68,14 +68,26 @@ class DocumentSplitter(DocumentSplitterPort):
             ]
         )
         
-        # split_text 返回的是 List[str]，需要包装成 Document
+        # split_text 返回的是 List[Document]，需要合并 metadata
         texts = splitter.split_text(doc.page_content)
-        
+
         chunks = []
         for text in texts:
+            # split_text 返回的可能是 Document 对象或字符串
+            if isinstance(text, Document):
+                chunk_content = text.page_content
+                header_metadata = text.metadata
+            else:
+                chunk_content = text
+                header_metadata = {}
+
+            # 合并原始 metadata 和标题 metadata
+            merged_metadata = doc.metadata.copy()
+            merged_metadata.update(header_metadata)
+
             chunk = Document(
-                page_content=text,
-                metadata=doc.metadata.copy()  # 继承原始 metadata
+                page_content=chunk_content,
+                metadata=merged_metadata
             )
             chunks.append(chunk)
         

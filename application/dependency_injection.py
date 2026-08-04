@@ -9,6 +9,7 @@ from application.service.rag_service import RAGService
 from application.service.agent_service import AgentService
 from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
+from application.agents.supervisor_agent import SupervisorAgent
 from infra.adapter.openai_adapter import openai_adapter
 from infra.adapter.chroma_adapter import chroma_adapter
 from infra.adapter.mcp_adapter import McpAdapter
@@ -52,7 +53,8 @@ def get_agent_service() -> AgentService:
     """获取 AgentService 实例（依赖注入用）"""
     return AgentService(
         flow_agent=get_flow_agent(),
-        simple_agent=get_simple_agent()
+        simple_agent=get_simple_agent(),
+        supervisor_agent=get_supervisor_agent()
     )
 
 
@@ -69,6 +71,14 @@ def get_simple_agent() -> SimpleAgent:
     return SimpleAgent(
         llm_adapter=openai_adapter,
         mcp_adapter=None
+    )
+
+
+def get_supervisor_agent() -> SupervisorAgent:
+    """获取 SupervisorAgent 实例（依赖注入用）"""
+    return SupervisorAgent(
+        llm_adapter=openai_adapter,
+        rag_service=get_rag_service()
     )
 
 

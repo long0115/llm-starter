@@ -3,15 +3,17 @@ from langgraph.types import Command
 from pydantic import config
 from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
+from application.agents.supervisor_agent import SupervisorAgent
 from infra.utils.log_util import logger
 
 
 class AgentService:
 
-    def __init__(self, flow_agent: FlowAgent, simple_agent: SimpleAgent):
+    def __init__(self, flow_agent: FlowAgent, simple_agent: SimpleAgent, supervisor_agent: SupervisorAgent = None):
         self.graph = None
         self.flow_agent = flow_agent
         self.simple_agent = simple_agent
+        self.supervisor_agent = supervisor_agent
 
     async def run_by_simple(self, question: str, thread_id: str = "default") -> str:
         """
@@ -58,7 +60,7 @@ class AgentService:
             # 返回错误信息给用户
             return f"Agent 执行失败：{str(e)}"
 
-    def run_by_flow(self, question: str, thread_id: str = "default") -> str:
+    async def run_by_flow(self, question: str, thread_id: str = "default") -> str:
         """
         运行 flow_agent，处理用户问题
 
@@ -101,4 +103,32 @@ class AgentService:
         except Exception as e:
             logger.error(f"Agent 执行失败: {e}")
             # 返回错误信息给用户
+            return f"Agent 执行失败：{str(e)}"
+
+    async def run_by_supervisor(self, question: str, thread_id: str = "default") -> str:
+        """
+        运行 supervisor_agent（多 Agent 协作），处理用户问题
+
+        Args:
+            question: 用户问题
+            thread_id: 会话 ID，用于区分不同会话的记忆（默认 "default"）
+
+        Returns: 多 Agent 协作的最终回答
+        """
+        if not self.supervisor_agent:
+            return "Supervisor Agent 未配置"
+
+        try:
+            self.graph = self.supervisor_agent.build()
+
+            result = self.graph.invoke(
+                input={"messages": [HumanMessage(content=question)]},
+                config={"configurable": {"thread_id": thread_id}},
+                version="v2"
+            )
+
+            return result.get("final_response", "未获取到回复")
+
+        except Exception as e:
+            logger.error(f"Supervisor Agent 执行失败: {e}")
             return f"Agent 执行失败：{str(e)}"
