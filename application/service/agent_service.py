@@ -3,17 +3,19 @@ from langgraph.types import Command
 from pydantic import config
 from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
-from application.agents.supervisor_agent import SupervisorAgent
 from infra.utils.log_util import logger
+from infra.storage.session_storage import SessionStorage
+from sqlalchemy.orm import Session
 
 
 class AgentService:
 
-    def __init__(self, flow_agent: FlowAgent, simple_agent: SimpleAgent, supervisor_agent: SupervisorAgent = None):
+    def __init__(self, flow_agent: FlowAgent, simple_agent: SimpleAgent, session_storage: SessionStorage = None, database: Session = None):
         self.graph = None
         self.flow_agent = flow_agent
         self.simple_agent = simple_agent
-        self.supervisor_agent = supervisor_agent
+        self.session_storage = session_storage
+        self.database = database
 
     async def run_by_simple(self, question: str, thread_id: str = "default") -> str:
         """
@@ -25,6 +27,14 @@ class AgentService:
 
         Returns: Agent 的最终回答
         """
+
+        # 如果没有会话ID，创建新会话
+        if not thread_id:
+            thread_id = self.session_storage.create_session(self.database, session_type="agent")
+
+        # 保存用户消息
+        self.session_storage.save_message(self.database, thread_id, "user", question)
+
         try:
             self.graph = await self.simple_agent.build()
 
@@ -51,6 +61,15 @@ class AgentService:
                     config={"configurable": {"thread_id": thread_id}},
                     version="v2"
                 )
+
+            # 保存AI回复
+            self.session_storage.save_message(
+                self.database,
+                thread_id, 
+                "assistant", 
+                result["messages"][-1].content,
+                token_count=0
+            )
             
             # 返回最后一条消息的内容（即 Agent 的最终回答）
             return result["messages"][-1].content
@@ -60,7 +79,7 @@ class AgentService:
             # 返回错误信息给用户
             return f"Agent 执行失败：{str(e)}"
 
-    async def run_by_flow(self, question: str, thread_id: str = "default") -> str:
+    def run_by_flow(self, question: str, thread_id: str = "default") -> str:
         """
         运行 flow_agent，处理用户问题
 
@@ -70,6 +89,14 @@ class AgentService:
 
         Returns: Agent 的最终回答   
         """
+
+        # 如果没有会话ID，创建新会话
+        if not thread_id:
+            thread_id = self.session_storage.create_session(self.database, session_type="agent")
+
+        # 保存用户消息
+        self.session_storage.save_message(self.database, thread_id, "user", question)
+
         try:
             self.graph = self.flow_agent.build()
 
@@ -96,6 +123,15 @@ class AgentService:
                     config={"configurable": {"thread_id": thread_id}},
                     version="v2"
                 )
+
+            # 保存AI回复
+            self.session_storage.save_message(
+                self.database,
+                thread_id, 
+                "assistant", 
+                result["messages"][-1].content,
+                token_count=0
+            )
             
             # 返回最后一条消息的内容（即 Agent 的最终回答）
             return result["messages"][-1].content
@@ -103,32 +139,4 @@ class AgentService:
         except Exception as e:
             logger.error(f"Agent 执行失败: {e}")
             # 返回错误信息给用户
-            return f"Agent 执行失败：{str(e)}"
-
-    async def run_by_supervisor(self, question: str, thread_id: str = "default") -> str:
-        """
-        运行 supervisor_agent（多 Agent 协作），处理用户问题
-
-        Args:
-            question: 用户问题
-            thread_id: 会话 ID，用于区分不同会话的记忆（默认 "default"）
-
-        Returns: 多 Agent 协作的最终回答
-        """
-        if not self.supervisor_agent:
-            return "Supervisor Agent 未配置"
-
-        try:
-            self.graph = self.supervisor_agent.build()
-
-            result = self.graph.invoke(
-                input={"messages": [HumanMessage(content=question)]},
-                config={"configurable": {"thread_id": thread_id}},
-                version="v2"
-            )
-
-            return result.get("final_response", "未获取到回复")
-
-        except Exception as e:
-            logger.error(f"Supervisor Agent 执行失败: {e}")
             return f"Agent 执行失败：{str(e)}"

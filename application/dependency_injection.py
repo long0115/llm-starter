@@ -9,7 +9,6 @@ from application.service.rag_service import RAGService
 from application.service.agent_service import AgentService
 from application.agents.flow_agent import FlowAgent
 from application.agents.simple_agent import SimpleAgent
-from application.agents.supervisor_agent import SupervisorAgent
 from infra.adapter.openai_adapter import openai_adapter
 from infra.adapter.chroma_adapter import chroma_adapter
 from infra.adapter.mcp_adapter import McpAdapter
@@ -36,8 +35,8 @@ def get_chat_service(db: Session = Depends(get_db)) -> ChatService:
     )
 
 
-def get_rag_service() -> RAGService:
-    """获取 RAGService 实例（依赖注入用）"""
+def _create_rag_service(db: Session) -> RAGService:
+    """创建 RAGService 实例（内部工厂，不依赖 FastAPI）"""
     return RAGService(
         loader=document_loader,
         cleaner=document_cleaner,
@@ -45,43 +44,39 @@ def get_rag_service() -> RAGService:
         prompt_port=prompt_manager,
         retriever_port=retriever_manager,
         vector_adapter=chroma_adapter,
-        llm_adapter=openai_adapter
+        llm_adapter=openai_adapter,
+        session_storage=session_storage,
+        database=db
     )
 
 
-def get_agent_service() -> AgentService:
+def get_rag_service(db: Session = Depends(get_db)) -> RAGService:
+    """获取 RAGService 实例（FastAPI 依赖注入用）"""
+    return _create_rag_service(db)
+
+
+def get_agent_service(db: Session = Depends(get_db)) -> AgentService:
     """获取 AgentService 实例（依赖注入用）"""
     return AgentService(
-        flow_agent=get_flow_agent(),
-        simple_agent=get_simple_agent(),
-        supervisor_agent=get_supervisor_agent()
+        simple_agent=_create_simple_agent(),
+        flow_agent=_create_flow_agent(db),
+        session_storage=session_storage,
+        database=db
     )
 
 
-def get_flow_agent() -> FlowAgent:
-    """获取 FlowAgent 实例（依赖注入用）"""
+def _create_flow_agent(db: Session) -> FlowAgent:
+    """创建 FlowAgent 实例（内部工厂）"""
     return FlowAgent(
         llm_adapter=openai_adapter,
-        rag_service=get_rag_service()
+        rag_service=_create_rag_service(db)
     )
 
 
-def get_simple_agent() -> SimpleAgent:
+def _create_simple_agent() -> SimpleAgent:
     """获取 SimpleAgent 实例（依赖注入用）"""
     return SimpleAgent(
         llm_adapter=openai_adapter,
-        mcp_adapter=None
+        mcp_adapter=None # McpAdapter()
     )
 
-
-def get_supervisor_agent() -> SupervisorAgent:
-    """获取 SupervisorAgent 实例（依赖注入用）"""
-    return SupervisorAgent(
-        llm_adapter=openai_adapter,
-        rag_service=get_rag_service()
-    )
-
-
-def get_mcp_adapter() -> McpAdapter:
-    """获取 McpAdapter 实例（依赖注入用）"""
-    return McpAdapter()

@@ -9,7 +9,7 @@ RAG 相关的数据模型（DTO）
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 class RagRequest(BaseModel):
@@ -20,6 +20,7 @@ class RagRequest(BaseModel):
         question: 用户问题（必填）
     """
     question: str = Field(..., description="用户问题")
+    session_id: Optional[str] = Field(None, description="会话ID（可选）")
 
 
 class RagResponse(BaseModel):

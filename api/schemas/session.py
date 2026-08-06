@@ -24,7 +24,7 @@ class SessionResponse(BaseModel):
     session_id: str = Field(..., description="会话 ID")
     title: str = Field(..., description="会话标题")
     session_type: str = Field(..., description="会话类型 (chat/rag/agent)")
-    is_active: bool = Field(..., description="会话是否活跃")
+    is_active: Optional[bool] = Field(None, description="会话是否活跃")
     created_at: Optional[str] = Field(None, description="会话创建时间")
     updated_at: Optional[str] = Field(None, description="会话更新时间")
 

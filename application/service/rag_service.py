@@ -17,6 +17,8 @@ from application.ports.vector_store_port import VectorStorePort
 from infra.settings import settings
 from infra.utils.log_util import logger
 from infra.document.formatter import format_docs, extract_sources, get_chunk_id
+from infra.storage.session_storage import SessionStorage
+from sqlalchemy.orm import Session
 
 
 class RAGService:
@@ -29,19 +31,23 @@ class RAGService:
         prompt_port: PromptPort,
         retriever_port: RetrieverPort,
         vector_adapter: VectorStorePort,
-        llm_adapter: LlmClientPort
+        llm_adapter: LlmClientPort,
+        session_storage: SessionStorage, 
+        database: Session
     ):
         self.loader = loader
         self.cleaner = cleaner
         self.splitter = splitter
         self.retriever_port = retriever_port
         self.prompt_port = prompt_port
+        self.session_storage = session_storage
+        self.database = database
         self.vector_adapter = vector_adapter
         self.llm_adapter = llm_adapter
         self.retriever = None
         self.index_meta_file = os.path.join(settings.CHROMA_STORE_DIR, "index_meta.json")
 
-    async def query(self, question: str, use_rerank: bool = False) -> RagResponse:
+    async def query(self, question: str, session_id: str = None, use_rerank: bool = False) -> RagResponse:
         """
         执行 RAG 查询
 
@@ -50,21 +56,26 @@ class RAGService:
             use_rerank: 是否使用 rerank 模型
         """
 
+        # 如果没有会话ID，创建新会话
+        if not session_id:
+            session_id = self.session_storage.create_session(self.database, session_type="rag")
+
+        # 保存用户消息
+        self.session_storage.save_message(self.database, session_id, "user", question)
+
         # 初始化检索器
         if self.retriever is None:
+            self.retriever = self.retriever_port.create_hybrid_retriever()
+            # 如果使用 rerank 模型，创建重排序检索器
             if use_rerank:
-                self.retriever = self.retriever_port.create_rerank_retriever()
-            else:
-                self.retriever = self.retriever_port.create_hybrid_retriever()
+                    self.retriever = self.retriever_port.create_rerank_retriever(self.retriever)
 
         # Step 1: 问题改写，只用来检索，不用来回答
         rewritten_query = await self._rewrite_query(question)
         logger.info(f"问题改写: {question} → {rewritten_query}")
 
         # Step 2: 执行检索
-        import asyncio
-        loop = asyncio.get_event_loop()
-        docs = await loop.run_in_executor(None, lambda: self.retriever.invoke(rewritten_query))
+        docs = await self.retriever.ainvoke(rewritten_query)
 
         # Step 3: 格式化上下文
         context = format_docs(docs)
@@ -76,6 +87,15 @@ class RAGService:
         # Step 5: 调用LLM获取回答
         response = await self.llm_adapter.client.ainvoke(prompt)
         answer = response.content
+
+        # 保存AI回复
+        self.session_storage.save_message(
+            self.database,
+            session_id, 
+            "assistant", 
+            answer,
+            token_count=0
+        )
 
         # Step 6: 提取引用来源
         sources = extract_sources(docs)

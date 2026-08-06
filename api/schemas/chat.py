@@ -22,8 +22,6 @@ class ChatRequest(BaseModel):
         temperature: 温度参数（可选）
     """
     message: str = Field(..., description="用户消息")
-    system_content: Optional[str] = Field(None, description="系统提示词")
-    temperature: Optional[float] = Field(None, description="温度参数（0~2）")
     session_id: Optional[str] = Field(None, description="会话ID（可选）")
 
 
@@ -39,4 +37,5 @@ class ChatResponse(BaseModel):
     content: str = Field(..., description="回复内容")
     finish_reason: Optional[str] = Field("stop", description="结束原因")
     token_usage: Optional[dict] = Field(None, description="Token 使用情况")
+    session_id: Optional[str] = Field(None, description="会话ID（可选）")
 

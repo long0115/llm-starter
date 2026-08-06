@@ -72,7 +72,7 @@ class RetrieverManager(RetrieverPort):
             weights=settings.RAG_HYBRID_WEIGHTS,    # 混合权重 [向量权重, BM25 权重]
         )
     
-    def create_rerank_retriever(self):
+    def create_rerank_retriever(self, base_retriever: EnsembleRetriever = None):
         """
         创建重排序检索器
         
@@ -82,7 +82,6 @@ class RetrieverManager(RetrieverPort):
 
         model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-v2-m3")
         compressor = CrossEncoderReranker(model=model, top_n=settings.RAG_RERANK_TOP_K)
-        base_retriever = self.create_hybrid_retriever()
         
         return ContextualCompressionRetriever(
             base_compressor=compressor,

@@ -33,6 +33,7 @@ async def rag_query(request: RagRequest, rag_service: RAGService = Depends(get_r
         
         result = await rag_service.query(
             question=request.question,
+            session_id=request.session_id,
             use_rerank=False
         )
         

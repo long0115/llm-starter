@@ -3,7 +3,6 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import List
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
 

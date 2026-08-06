@@ -6,6 +6,7 @@
 
 import json
 import uuid
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -46,7 +47,8 @@ class SessionStorage:
             session = Session(
                 session_id=session_id,
                 title=title,
-                session_type=session_type
+                session_type=session_type,
+                created_at=datetime.now()
             )
             db.add(session)
             db.commit()
@@ -93,12 +95,12 @@ class SessionStorage:
         query = db.query(Session).filter(Session.is_active == True)
         if session_type:
             query = query.filter(Session.session_type == session_type)
-        sessions = query.order_by(Session.updated_at.desc()).limit(limit).all()
+        sessions = query.order_by(Session.created_at.desc()).limit(limit).all()
         return [{
             "session_id": s.session_id,
             "title": s.title,
             "session_type": s.session_type,
-            "updated_at": s.updated_at.isoformat() if s.updated_at else None
+            "created_at": s.created_at.isoformat() if s.created_at else None
         } for s in sessions]
 
     def update_session_title(self, db: Session, session_id: str, title: str):

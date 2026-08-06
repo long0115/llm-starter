@@ -33,7 +33,6 @@ async def chat(request: ChatRequest, chat_service: ChatService = Depends(get_cha
         
         result = await chat_service.chat(
             message=request.message,
-            system_content=request.system_content,
             session_id=request.session_id
         )
         
@@ -62,7 +61,7 @@ async def chat_stream(request: ChatRequest, chat_service: ChatService = Depends(
             try:
                 async for chunk in chat_service.stream_chat(
                     message=request.message,
-                    system_content=request.system_content,
+                    session_id=request.session_id
                 ):
                     yield f"data: {chunk}\n\n"
                 
