@@ -10,28 +10,34 @@
 </p>
 
 <p align="center">
-  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的多 Agent 协作工作流框架</strong>
+  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架</strong>
   <br/>
   集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力
 </p>
 
+
+
 ## 目录
 
-- [项目特性](#项目特性)
-- [技术栈](#技术栈)
+- [项目亮点](#项目亮点)
+- [运行效果](#运行效果)
 - [架构设计](#架构设计)
+- [技术栈](#技术栈)
 - [目录结构](#目录结构)
 - [快速开始](#快速开始)
-- [配置说明](#配置说明)
-- [API 接口](#api-接口)
 - [核心功能](#核心功能)
-- [Docker 部署](#docker-部署)
-- [开发计划](#开发计划)
+- [Docker部署](#Docker部署)
+- [关于项目](#关于项目)
 
 ---
 
-## 项目特性
+## 项目亮点
+- **企业级架构设计**：采用经典的三层架构（API/Application/Infrastructure）与端口适配器模式，实现业务逻辑与基础设施解耦，代码结构清晰，易于维护和扩展。
+- **现代化的 AI 技术栈**：基于 LangGraph 构建状态机式 Agent，支持意图识别、任务规划与多轮对话；集成 RAG 混合检索与重排序，解决大模型幻觉问题。
+- **工程化最佳实践**：内置依赖注入、统一异常处理、速率限制、链路追踪及 Docker 容器化部署，具备生产环境交付能力。
+可扩展技能系统：设计基于 Markdown 定义的 Skill 系统，支持渐进式披露与按需加载，实现 Agent 能力的动态扩展。
 
+### 项目特性
 - 💬 **智能对话** - 支持同步/流式对话，多轮上下文记忆
 - 📚 **RAG 知识库** - 混合检索（向量 + BM25），重排序检索，引用来源溯源
 - 🤖 **Agent 智能体** - 基于 LangGraph 的意图识别、任务规划、技能调用、工具调用、上下文摘要、人工干预确认等
@@ -44,6 +50,31 @@
 
 ---
 
+## 运行效果
+<div align="center">
+    <img src="static/image_1.png" alt="运行效果1" width="100%" />
+    <img src="static/image_2.png" alt="运行效果2" width="100%" />
+</div>
+
+---
+
+## 架构设计
+
+项目采用三层架构，职责清晰，易于扩展：
+
+<div align="center">
+    <img src="static/architecture.png" alt="系统架构图" width="100%" />
+</div>
+
+
+| 层级 | 职责 | 核心组件 |
+|------|------|---------|
+| **API 层** | 对外暴露 RESTful 接口，处理请求/响应、参数校验、中间件 | routers、schemas、middleware |
+| **Application 层** | 核心业务逻辑，编排 Service、Agent、Skill，定义端口接口 | service、agents、skills、ports、dependency_injection |
+| **Infrastructure 层** | 封装外部依赖（LLM、向量库、MCP、文档处理、存储等） | adapter、document、retriever、storage、prompt、external |
+
+---
+
 ## 技术栈
 
 | 分类 | 技术 | 版本 | 说明 |
@@ -52,48 +83,11 @@
 | LLM 框架 | LangChain | 1.3+ | LLM 应用开发框架 |
 | Agent 框架 | LangGraph | 1.2+ | 状态机式 Agent |
 | 向量数据库 | Chroma | 1.5+ | 轻量级向量存储 |
-| 嵌入模型 | bge-reranker-v2-m3 | - | 开源重排序模型 |
 | 数据库 | SQLite | - | 会话持久化 |
-| ORM | SQLAlchemy | 2.0+ | 数据访问 |
-| 配置管理 | Pydantic Settings | 2.14+ | 类型安全配置 |
+| ORM | SQLAlchemy | 2.0+ | ORM 框架，数据持久化 |
+| 配置管理 | Pydantic Settings | 2.14+ | 类型安全配置管理 |
 | 链路追踪 | LangSmith | 0.9+ | LLM 应用可观测性 |
 | 部署 | Docker | - | 容器化部署 |
-
----
-
-## 架构设计
-
-项目采用三层架构，职责清晰，易于扩展：
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    API 层 (api/)                        │
-│  负责对外暴露 HTTP 接口，处理请求参数校验、路由分发       │
-│  /chat  /rag  /agent  /session  /health                │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              Application 层 (application/)              │
-│  核心业务逻辑层，包含 Service、Agent、Skill、端口定义    │
-│  Service  │  Agent  │  Skill  │  Port  │  DI 容器       │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│             Infrastructure 层 (infra/)                  │
-│  基础设施层，封装所有外部依赖和底层能力                  │
-│  Adapter  │  Document  │  Retriever  │  Storage  │ ...  │
-└─────────────────────────────────────────────────────────
-```
-
-### 各层职责
-
-| 层级 | 职责 | 核心组件 |
-|------|------|---------|
-| **API 层** | 对外暴露 RESTful 接口，处理请求/响应、参数校验、中间件 | routers、schemas、middleware |
-| **Application 层** | 核心业务逻辑，编排 Service、Agent、Skill，定义端口接口 | service、agents、skills、ports、dependency_injection |
-| **Infrastructure 层** | 封装外部依赖（LLM、向量库、MCP、文档处理、存储等） | adapter、document、retriever、storage、prompt、external |
 
 ---
 
@@ -114,6 +108,7 @@ llm-starter/
 │   ├── schemas/                      # 请求/响应模型
 │       ├── chat.py                   # Chat 模型
 │       ├── rag.py                    # RAG 模型
+│       ├── session.py                # 会话 模型
 │       └── agent.py                  # Agent 模型
 ├── application/                      # 业务层
 │   ├── agents/                       # Agent 实现
@@ -175,7 +170,7 @@ llm-starter/
 ├── sqlite_db/                        # SQLite 数据库存储
 ├── logs/                             # 日志目录
 ├── .env                              # 环境变量
-├── requirements.txt                  # 依赖
+├── requirements.txt                  # 依赖列表
 ├── Dockerfile                        # Docker 配置
 ├── docker-compose.yml                # Docker Compose 配置
 └── README.md                         # 项目说明
@@ -191,10 +186,10 @@ llm-starter/
 - pip
 - (可选) Docker Desktop
 
-### 1. 克隆项目
+### 1. 克隆代码
 
 ```bash
-git clone https://github.com/your-username/llm-starter.git
+git clone https://github.com/long0115/llm-starter.git
 cd llm-starter
 ```
 
@@ -217,11 +212,6 @@ pip install -r requirements.txt
 ```
 
 ### 4. 配置环境变量
-
-```bash
-# 复制模板（如果提供）
-# 或直接编辑 .env 文件
-```
 
 在 `.env` 文件中配置：
 
@@ -263,11 +253,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 - API 文档（ReDoc）：http://localhost:8000/redoc
 - 健康检查：http://localhost:8000/health
 
----
-
-## 配置说明
-
-### 模型切换
+### 7. 模型切换
 
 修改 `.env` 中的 `DEFAULT_LLM_PROVIDER`：
 
@@ -279,7 +265,7 @@ DEFAULT_LLM_PROVIDER=aliyun
 DEFAULT_LLM_PROVIDER=doubao
 ```
 
-### RAG 参数调优
+### 8. RAG 参数调优
 
 在 `infra/settings.py` 中调整：
 
@@ -291,102 +277,23 @@ RAG_RERANK_TOP_K: int = 3             # 重排序返回数量
 RAG_HYBRID_WEIGHTS: List[float] = [0.6, 0.4]  # 混合权重
 ```
 
-### 速率限制
+### 9. 速率限制
 
 ```python
 RATE_LIMIT_MAX_REQUESTS: int = 60      # 最大请求数
 RATE_LIMIT_WINDOW_SECONDS: int = 60    # 时间窗口（秒）
 ```
 
----
+### 10. 数据持久化
 
-## API 接口
+以下目录会自动挂载到本地：
 
-### 对话接口
-
-#### 同步对话
-
-```http
-POST /chat/base
-Content-Type: application/json
-
-{
-    "message": "你好，请介绍一下自己",
-    "session_id": "optional-session-id"
-}
-```
-
-#### 流式对话
-
-```http
-POST /chat/stream
-Content-Type: application/json
-
-{
-    "message": "写一首关于春天的诗",
-    "session_id": "optional-session-id"
-}
-```
-
-### RAG 接口
-
-#### 上传文档到知识库
-
-```http
-POST /rag/documents
-Content-Type: multipart/form-data
-
-# 选择文件上传（支持 .md, .txt, .pdf, .docx）
-```
-
-#### RAG 查询
-
-```http
-POST /rag/query
-Content-Type: application/json
-
-{
-    "question": "文档中提到的核心功能有哪些？"
-}
-```
-
-### Agent 接口
-
-```http
-POST /agent/run
-Content-Type: application/json
-
-{
-    "question": "帮我计算123*456，然后查询今天天气",
-    "thread_id": "optional-thread-id"
-}
-```
-
-### 会话接口
-
-#### 创建会话
-
-```http
-POST /session/create
-Content-Type: application/json
-
-{
-    "session_type": "chat",
-    "title": "新会话"
-}
-```
-
-#### 获取会话列表
-
-```http
-GET /session/list?session_type=chat&limit=50
-```
-
-#### 获取会话消息历史
-
-```http
-GET /session/{session_id}/messages?session_id=xxx&limit=100
-```
+| 容器路径 | 本地路径 | 说明 |
+|---------|---------|------|
+| `/app/chroma_db` | `./chroma_db` | 向量数据库 |
+| `/app/sqlite_db` | `./sqlite_db` | 会话数据库 |
+| `/app/logs` | `./logs` | 日志文件 |
+| `/app/docs` | `./docs` | 知识库文档 |
 
 ---
 
@@ -395,17 +302,6 @@ GET /session/{session_id}/messages?session_id=xxx&limit=100
 ### 1. 智能对话
 
 支持同步和流式两种对话模式，通过 `session_id` 实现多轮上下文记忆：
-
-```python
-# 第一次对话
-POST /chat/base
-{"message": "我叫张三"}
-
-# 继续对话（LLM 能记住上下文）
-POST /chat/base
-{"message": "我刚才说我叫什么名字？", "session_id": "xxx"}
-# 响应: "你刚才说你叫张三"
-```
 
 ### 2. RAG 知识库
 
@@ -439,14 +335,6 @@ POST /chat/base
 - **匹配后**：按需加载完整 SKILL.md 内容（执行步骤、注意事项等）
 - **执行时**：调用具体 Python 实现
 
-目录结构：
-```
-skills/
-└── weather/
-    ├── SKILL.md           # 技能定义（YAML frontmatter + Markdown）
-    └── weather_skill.py   # 技能实现（继承 Skill 基类）
-```
-
 ### 5. MCP 远程工具
 
 通过 MCP（Model Context Protocol）协议调用远程服务工具：
@@ -457,7 +345,7 @@ skills/
 
 ---
 
-## Docker 部署
+## Docker部署
 
 ### 1. 构建镜像
 
@@ -483,35 +371,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### 数据持久化
-
-以下目录会自动挂载到本地：
-
-| 容器路径 | 本地路径 | 说明 |
-|---------|---------|------|
-| `/app/chroma_db` | `./chroma_db` | 向量数据库 |
-| `/app/sqlite_db` | `./sqlite_db` | 会话数据库 |
-| `/app/logs` | `./logs` | 日志文件 |
-| `/app/docs` | `./docs` | 知识库文档 |
-
 ---
 
-## 常见问题
-
-### Q: 如何切换 LLM 模型？
-
-修改 `.env` 文件中的 `DEFAULT_LLM_PROVIDER` 为 `aliyun` 或 `doubao`，重启服务即可。
-
-### Q: RAG 支持哪些文件格式？
-
-支持 `.md`, `.txt`, `.pdf`, `.docx`, `.doc` 格式。
-
-### Q: 如何启用 LangSmith 追踪？
-
-在 `.env` 中配置 `LANGSMITH_API_KEY` 并设置 `LANGSMITH_TRACING=true`。
-
-### Q: 数据存在哪里？
-
-- 向量数据库：`./chroma_db/`
-- 会话数据库：`./sqlite_db/llm_app.db`
-- 日志：`./logs/`
+## 关于项目
+本项目由一名拥有 10 年经验的 Java 后端工程师开发。旨在探索如何将企业级后端工程化经验（如分层架构、设计模式、依赖注入）应用到 Python AI 应用开发中，解决 AI 项目常见的“脚本化”、“难以维护”等痛点。
