@@ -1,21 +1,15 @@
 # MultiAgentFlow
 
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python" />
-  <img src="https://img.shields.io/badge/FastAPI-0.139+-009688" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/LangChain-1.3+-green" alt="LangChain" />
-  <img src="https://img.shields.io/badge/LangGraph-1.2+-yellow" alt="LangGraph" />
-  <img src="https://img.shields.io/badge/SQLite-3+-003B57" alt="SQLite" />
-  <img src="https://img.shields.io/badge/Docker-ready-2496ED" alt="Docker" />
-</p>
-
-<p align="center">
-  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架</strong>
-  <br/>
-  集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力
-</p>
+![Python](https://img.shields.io/badge/python-3.10+-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.139+-009688)
+![LangChain](https://img.shields.io/badge/LangChain-1.3+-green)
+![LangGraph](https://img.shields.io/badge/LangGraph-1.2+-yellow)
+![SQLite](https://img.shields.io/badge/SQLite-3+-003B57)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
 
 
+**一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架**
+*集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力*
 
 ## 目录
 
@@ -26,7 +20,7 @@
 - [目录结构](#目录结构)
 - [快速开始](#快速开始)
 - [核心功能](#核心功能)
-- [Docker部署](#Docker部署)
+- [Docker](#Docker)
 - [关于项目](#关于项目)
 
 ---
@@ -51,10 +45,8 @@
 ---
 
 ## 运行效果
-<div align="center">
-    <img src="static/image_1.png" alt="运行效果1" width="100%" />
-    <img src="static/image_2.png" alt="运行效果2" width="100%" />
-</div>
+![运行效果1](static/image_1.png)
+![运行效果2](static/image_2.png)
 
 ---
 
@@ -62,9 +54,7 @@
 
 项目采用三层架构，职责清晰，易于扩展：
 
-<div align="center">
-    <img src="static/architecture.png" alt="系统架构图" width="100%" />
-</div>
+![系统架构图](static/architecture.png)
 
 
 | 层级 | 职责 | 核心组件 |
@@ -345,7 +335,7 @@ RATE_LIMIT_WINDOW_SECONDS: int = 60    # 时间窗口（秒）
 
 ---
 
-## Docker部署
+## Docker
 
 ### 1. 构建镜像
 
