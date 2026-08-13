@@ -7,9 +7,9 @@
 ![SQLite](https://img.shields.io/badge/SQLite-3+-003B57)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
 
-
 **一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架**
-*集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力*
+
+集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力
 
 ## 目录
 
