@@ -1,15 +1,16 @@
-# MultiAgentFlow
-
-![Python](https://img.shields.io/badge/python-3.10+-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.139+-009688)
-![LangChain](https://img.shields.io/badge/LangChain-1.3+-green)
-![LangGraph](https://img.shields.io/badge/LangGraph-1.2+-yellow)
-![SQLite](https://img.shields.io/badge/SQLite-3+-003B57)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
-
-**一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架**
-
-集成 Chat（基础对话）、RAG（知识库检索）、Agent（智能体）、Skill（技能系统）、MCP（远程工具） 五大核心能力
+<h1 align="center">MultiAgentFlow</h1>
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.139+-009688" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/LangChain-1.3+-green" alt="LangChain" />
+  <img src="https://img.shields.io/badge/LangGraph-1.2+-yellow" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/SQLite-3+-003B57" alt="SQLite" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED" alt="Docker" />
+</p>
+<p align="center">
+  <strong>一个基于 Python + FastAPI + LangChain + LangGraph 的企业级多 Agent 协作框架</strong>
+</p>
+<br>
 
 ## 目录
 
@@ -27,20 +28,18 @@
 
 ## 项目亮点
 - **企业级架构设计**：采用经典的三层架构（API/Application/Infrastructure）与端口适配器模式，实现业务逻辑与基础设施解耦，代码结构清晰，易于维护和扩展。
-- **现代化的 AI 技术栈**：基于 LangGraph 构建状态机式 Agent，支持意图识别、任务规划与多轮对话；集成 RAG 混合检索与重排序，解决大模型幻觉问题。
 - **工程化最佳实践**：内置依赖注入、统一异常处理、速率限制、链路追踪及 Docker 容器化部署，具备生产环境交付能力。
-可扩展技能系统：设计基于 Markdown 定义的 Skill 系统，支持渐进式披露与按需加载，实现 Agent 能力的动态扩展。
-
-### 项目特性
-- 💬 **智能对话** - 支持同步/流式对话，多轮上下文记忆
-- 📚 **RAG 知识库** - 混合检索（向量 + BM25），重排序检索，引用来源溯源
-- 🤖 **Agent 智能体** - 基于 LangGraph 的意图识别、任务规划、技能调用、工具调用、上下文摘要、人工干预确认等
-- 🧠 **Skill 技能系统** - SKILL.md 文件定义，渐进式披露，按需加载技能   
-- 🔌 **MCP 远程工具** - 通过 MCP 协议调用远程服务工具，动态扩展 Agent 能力
-- 🔌 **多模型支持** - 阿里云/豆包等主流 LLM，启动时可切换
-- 🛡️ **生产就绪** - CORS、认证、速率限制、日志、异常处理
-- 📊 **链路追踪** - 集成 LangSmith，可进行链路追踪并观测
-- 🐳 **容器化** - Docker + docker-compose 一键部署
+- **可扩展技能系统**：设计基于 Markdown 定义的 Skill 系统，支持渐进式披露与按需加载，实现 Agent 能力的动态扩展。
+- **核心能力**：
+  - Chat 智能对话：基础的AI对话能力，支持同步/异步/流式/结构化输出，Session记录多轮会话
+  - RAG 知识库检索：可上传文档增量更新知识库，采用混合检索（向量 + BM25）+ 重排序检索提高检索精度，标记引用来源可溯源
+  - Agent 智能体：基于 LangChain 的 ReAct 范式的单 Agent ，和基于 LangGraph 的多 Agent 协作，支持意图识别、任务规划、技能调用、工具调用、上下文摘要、人工干预确认等
+  - Skill 技能系统：SKILL.md 文件定义，渐进式披露，按需加载技能   
+  - MCP 远程工具：通过 MCP 协议调用远程服务工具，动态扩展 Agent 能力
+  - 多模型切换：阿里云/豆包等主流 LLM，启动时可切换
+  - 工程化实践：CORS 、认证、速率限制、日志、异常处理
+  - 全链路追踪：集成 LangSmith，可进行链路追踪并观测
+  - 容器化部署：Docker + docker-compose 一键部署
 
 ---
 
@@ -170,20 +169,22 @@ llm-starter/
 
 ## 快速开始
 
-### 环境要求
+### 1. 环境要求
 
+```bash
 - Python 3.10+
 - pip
-- (可选) Docker Desktop
+- Docker Desktop(可选)
+```
 
-### 1. 克隆代码
+### 2. 克隆代码
 
 ```bash
 git clone https://github.com/long0115/llm-starter.git
 cd llm-starter
 ```
 
-### 2. 创建虚拟环境
+### 3. 创建虚拟环境
 
 ```bash
 # Windows
@@ -195,13 +196,13 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. 安装依赖
+### 4. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. 配置环境变量
+### 5. 配置环境变量
 
 在 `.env` 文件中配置：
 
@@ -227,7 +228,7 @@ LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=my-llm-app
 ```
 
-### 5. 启动服务
+### 6. 启动服务
 
 ```bash
 # 开发模式（支持热重载）
@@ -237,13 +238,13 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 6. 访问服务
+### 7. 访问服务
 
 - API 文档（Swagger）：http://localhost:8000/docs
 - API 文档（ReDoc）：http://localhost:8000/redoc
 - 健康检查：http://localhost:8000/health
 
-### 7. 模型切换
+### 8. 模型切换
 
 修改 `.env` 中的 `DEFAULT_LLM_PROVIDER`：
 
@@ -255,7 +256,7 @@ DEFAULT_LLM_PROVIDER=aliyun
 DEFAULT_LLM_PROVIDER=doubao
 ```
 
-### 8. RAG 参数调优
+### 9. RAG 参数调优
 
 在 `infra/settings.py` 中调整：
 
@@ -267,14 +268,16 @@ RAG_RERANK_TOP_K: int = 3             # 重排序返回数量
 RAG_HYBRID_WEIGHTS: List[float] = [0.6, 0.4]  # 混合权重
 ```
 
-### 9. 速率限制
+### 10. 速率限制
+
+在 `infra/settings.py` 中调整：
 
 ```python
 RATE_LIMIT_MAX_REQUESTS: int = 60      # 最大请求数
 RATE_LIMIT_WINDOW_SECONDS: int = 60    # 时间窗口（秒）
 ```
 
-### 10. 数据持久化
+### 11. 数据持久化
 
 以下目录会自动挂载到本地：
 

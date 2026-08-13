@@ -12,11 +12,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from collections import defaultdict
 from infra.utils.log_util import logger
+from infra.settings import settings
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     
-    def __init__(self, app, max_requests: int = 60, window_seconds: int = 60):
+    def __init__(self, app):
         """
         初始化速率限制器
         
@@ -26,8 +27,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             window_seconds: 时间窗口大小（默认 60 秒）
         """
         super().__init__(app)
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
+        self.max_requests = settings.RATE_LIMIT_MAX_REQUESTS
+        self.window_seconds = settings.RATE_LIMIT_WINDOW_SECONDS
         # 存储每个 IP 的请求时间戳
         self.requests = defaultdict(list)
     
