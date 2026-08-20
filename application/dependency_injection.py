@@ -77,6 +77,6 @@ def _create_simple_agent() -> SimpleAgent:
     """获取 SimpleAgent 实例（依赖注入用）"""
     return SimpleAgent(
         llm_adapter=openai_adapter,
-        mcp_adapter=None # McpAdapter()
+        mcp_adapter=McpAdapter()
     )
 

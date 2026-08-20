@@ -39,10 +39,10 @@ class SimpleAgent:
                 try:
                     await self.mcp_adapter.initialize()
                     mcp_tools = self.mcp_adapter.get_tools()
+                    logger.info(f"MCP 工具加载成功：{mcp_tools}")
                     if mcp_tools:
                         # 合并本地工具和 MCP 工具
                         self.tools = self.tools + mcp_tools
-                        logger.info(f"MCP 工具加载成功，共 {len(mcp_tools)} 个远程工具")
                 except Exception as e:
                     logger.info(f"MCP 工具加载失败，仅使用本地工具: {e}")
 

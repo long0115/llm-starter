@@ -38,8 +38,8 @@ class AgentService:
         try:
             self.graph = await self.simple_agent.build()
 
-            # 调用 graph，传入初始状态，thread_id 用于区分不同会话的记忆
-            result = self.graph.invoke(
+            # MCP 工具是异步的，必须用 ainvoke
+            result = await self.graph.ainvoke(
                 input={"messages": [HumanMessage(content=question)]},
                 config={"configurable": {"thread_id": thread_id}},
                 version="v2"
@@ -55,8 +55,8 @@ class AgentService:
                 approved = "approve"
                 logger.info(f"人工干预结果: 同意")
 
-                # 继续执行
-                result = self.graph.invoke(
+                # 继续执行（同样用 ainvoke）
+                result = await self.graph.ainvoke(
                     Command(resume={"decisions": [{"type": approved}]}),
                     config={"configurable": {"thread_id": thread_id}},
                     version="v2"
