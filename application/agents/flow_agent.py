@@ -1,19 +1,21 @@
-from typing import TypedDict, Annotated, Literal
+from typing import TypedDict, Annotated, Literal, Optional
 from langchain_core.messages import BaseMessage, AIMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
 from langgraph.types import interrupt
 from langgraph.graph.message import add_messages
-import asyncio
 from application.ports.llm_client_port import LlmClientPort
 from application.service.rag_service import RAGService
+from application.skills.skill_registry import SkillRegistry
+from application.skills.skill_executor import SkillExecutor
 from application.tools.calculator import calculate
 from application.tools.time_tool import get_current_time
 from application.tools.weather import get_weather
 from infra.utils.log_util import logger
 from textwrap import dedent
 from pydantic import BaseModel
+import asyncio
 
 
 # 需要人工干预的工具列表（类比 Java 中的配置常量）
@@ -22,14 +24,21 @@ HUMAN_APPROVAL_TOOLS = {"get_weather"}
 # 定义 Agent 状态类型（TypedDict）
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
-    agent_type: Annotated[str, "agent类型：chat_agent | rag_agent | tool_agent"]
+    agent_type: Annotated[str, "agent类型：chat_agent | rag_agent | tool_agent | skill_agent"]
+    skill_name: Annotated[Optional[str], "匹配到的技能名称（仅 skill_agent 时使用）"] = None
     agent_status: Annotated[dict[str, str], "agent状态：success | error"] = {"status": "success", "response": ""}
     human_approved: Annotated[bool, "人工干预结果：是否同意本次操作"] = False
     pending_tool_calls: Annotated[list, "待审批的工具调用列表"] = []
 
 
 class FlowAgent:
-    def __init__(self, llm_adapter: LlmClientPort, rag_service: RAGService):
+    def __init__(
+        self,
+        llm_adapter: LlmClientPort,
+        rag_service: RAGService,
+        skill_registry: Optional[SkillRegistry] = None,
+        skill_executor: Optional[SkillExecutor] = None,
+    ):
         # graph 实例，初始化为 None，等待懒加载
         self.graph = None
         # MemorySaver 用于保存对话历史，支持多会话（通过 thread_id 区分）
@@ -39,6 +48,8 @@ class FlowAgent:
         # 依赖注入
         self.llm_adapter = llm_adapter
         self.rag_service = rag_service
+        self.skill_registry = skill_registry
+        self.skill_executor = skill_executor
         
 
     def build(self):
@@ -66,6 +77,8 @@ class FlowAgent:
             workflow.add_node("rag_agent", self._rag_agent_node)
             # 工具调用选择节点
             workflow.add_node("tool_agent", self._tool_agent_node)
+            # 技能执行节点
+            workflow.add_node("skill_agent", self._skill_agent_node)
             # 人工干预节点
             workflow.add_node("human_approval", self._human_approval_node)   
             # 最终总结节点
@@ -86,6 +99,8 @@ class FlowAgent:
             workflow.add_edge("chat_agent", "final_summary")
             # RAG 知识库问答完成后指向 END
             workflow.add_edge("rag_agent", "final_summary")
+            # 技能执行完成后指向 END
+            workflow.add_edge("skill_agent", "final_summary")
             # 工具调用选择节点：根据模型返回结果决定是否需要人工干预
             workflow.add_conditional_edges(
                 "tool_agent",
@@ -119,36 +134,68 @@ class FlowAgent:
         # 获取用户问题
         question = state["messages"][-1].content
 
-        # 定义结构化输出的 Schema
+        # 定义结构化输出的 Schema（新增 skill_agent 和 skill_name）
         class TaskType(BaseModel):
-            type: Literal["chat_agent", "rag_agent", "tool_agent"]   # 任务类型
+            type: Literal["chat_agent", "rag_agent", "tool_agent", "skill_agent"]   # 任务类型
+            skill_name: Optional[str] = None   # 匹配到的技能名称（仅 skill_agent 时填写）
             reason: str   # 判断原因，用于调试和日志
 
-        # 使用结构化输出判断任务类型，自动构建符合 Schema 的输出
+        # 构建系统提示词：基础路由规则 + 技能目录（渐进式披露）
+        base_prompt = dedent(f"""
+        你是一个任务协调者（Router）。你的唯一职责是分析用户的输入，并严格按照规则将其分发给对应的专家 Agent。
+
+        <agents>
+            [
+                {{ "name": "rag_agent", "description": "RAG 知识库专家。处理需要查询内部文档、公司制度、员工手册、业务流程等静态知识的问题。" }},
+                {{ "name": "tool_agent", "description": "工具调用专家。处理需要执行外部操作的问题，如数学计算、查询实时天气、获取当前时间、搜索网页等。" }},
+                {{ "name": "skill_agent", "description": "技能执行专家。处理与特定业务技能高度匹配的任务。当路由到此 Agent 时，必须指定具体的 skill_name。" }},
+                {{ "name": "chat_agent", "description": "普通对话专家。处理日常闲聊、问候、情感安抚、通用常识问答等不属于上述类别的请求。" }}
+            ]
+        </agents>
+
+        <rules>
+            1. 优先级：skill_agent > tool_agent > rag_agent > chat_agent。
+            2. 当用户意图与某个特定技能匹配时，必须路由到 skill_agent，并在 skill_name 字段填入准确的技能名称。
+            3. 涉及公司内部规定、政策、流程查询，路由到 rag_agent。
+            4. 涉及实时信息获取或客观计算，路由到 tool_agent。
+            5. 无法匹配以上规则时，默认路由到 chat_agent。
+        </rules>
+
+        <skills>
+            {self.skill_registry.get_catalog()}
+        </skills>
+            
+        <examples>
+            用户输入: "帮我算一下 125 乘以 34 等于多少"
+            输出: {{ "type": "tool_agent", "skill_name": null, "reason": "需要执行数学计算" }}
+
+            用户输入: "请假流程是怎么样的？"
+            输出: {{ "type": "rag_agent", "skill_name": null, "reason": "需要查询公司请假流程" }}
+
+            用户输入: "帮我总结一下今天的会议纪要"
+            输出: {{ "type": "skill_agent", "skill_name": "meeting-summarizer", "reason": "需要执行会议纪要总结" }}
+
+            用户输入: "你今天心情怎么样？"
+            输出: {{ "type": "chat_agent", "skill_name": null, "reason": "需要执行普通对话" }}
+        </examples>
+        """)
+
+        # 使用结构化输出判断任务类型
         response = self.llm_adapter.invoke_with_structure(
             question=question,
-            system_content=dedent("""
-            你是一个任务协调者，负责分析用户问题并决定由哪个专家 Agent 处理。
-
-            专家 Agent 列表：
-                - rag_agent: RAG 知识库专家，处理需要查询文档/知识库的问题（如公司制度、员工手册等）
-                - tool_agent: 工具调用专家，处理需要计算、查天气、查时间等工具操作的问题
-                - chat_agent: 普通对话专家，处理闲聊、问候、简单问答等
-
-            判断规则：
-                - 如果问题涉及公司内部制度、政策、流程等，路由到 rag_agent
-                - 如果问题需要计算、查询实时信息（天气、时间），路由到 tool_agent
-                - 其他情况路由到 chat_agent
-            """),
+            system_content=base_prompt,
             messages=state["messages"],
             schema=TaskType
         )
 
         # 记录意图识别结果日志
-        logger.info(f"路由决策: {response.type}, 原因: {response.reason}")
+        logger.info(f"路由决策: {response.type}" + (f", 技能: {response.skill_name}" if response.skill_name else "") + f", 原因: {response.reason}")
         
-        # 返回更新后的状态（只更新 agent_type
-        return {"agent_type": response.type}
+        # 返回更新后的状态
+        return {
+            "agent_type": response.type,
+            "skill_name": response.skill_name,
+        }
 
     def _chat_agent_node(self, state: AgentState) -> AgentState:
         """
@@ -191,6 +238,44 @@ class FlowAgent:
         except Exception as e:
             logger.error(f"RAG Agent 处理失败: {e}")
             return {"agent_status": {"status": "error", "response": f"知识库查询失败: {str(e)}"}}
+
+    def _skill_agent_node(self, state: AgentState) -> AgentState:
+        """
+        技能执行节点（步骤2+3核心逻辑）。
+        
+        流程：
+        1. 从 state 中获取匹配到的技能名称（由意图识别节点决定）
+        2. 通过 SkillExecutor 加载完整 SKILL.md 指令 + 外部引用
+        3. 构建系统提示词，调用 LLM 执行技能
+        4. 返回结果
+        """
+        question = state["messages"][-1].content
+        skill_name = state.get("skill_name")
+
+        logger.info(f"Skill Agent 处理: 技能={skill_name}, 问题={question}")
+
+        # 检查技能系统是否可用
+        if not self.skill_executor or not skill_name:
+            error_msg = "技能系统未初始化或未匹配到技能"
+            logger.error(error_msg)
+            return {"agent_status": {"status": "error", "response": error_msg}}
+
+        try:
+            # 通过 SkillExecutor 执行技能（内部会加载完整指令 + 外部引用）
+            result = self.skill_executor.execute(
+                skill_name=skill_name,
+                user_input=question,
+                messages=state["messages"]
+            )
+
+            ai_message = AIMessage(content=result)
+            return {
+                "messages": [ai_message],
+                "agent_status": {"status": "success", "response": result}
+            }
+        except Exception as e:
+            logger.error(f"Skill Agent 执行失败: {e}")
+            return {"agent_status": {"status": "error", "response": f"技能执行失败: {str(e)}"}}
 
     def _tool_agent_node(self, state: AgentState) -> AgentState:
         """
